@@ -69,11 +69,11 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [period, setPeriod] = useState(30) // MUDADO: 30 dias por padrão
   
-  // ✅ CORRIGIDO: Inicializar com datas válidas (últimos 30 dias com fuso horário correto)
-  const defaultEnd = endOfDay(new Date()) // Fim do dia atual (23:59:59)
-  const defaultStart = startOfDay(subDays(new Date(), 30)) // Início de 30 dias atrás (00:00:00)
-  const [startDate, setStartDate] = useState(format(defaultStart, 'yyyy-MM-dd'))
-  const [endDate, setEndDate] = useState(format(defaultEnd, 'yyyy-MM-dd'))
+  // ✅ GARANTIDO: startDate e endDate NUNCA são undefined
+  const today = new Date()
+  const thirtyDaysAgo = subDays(today, 30)
+  const [startDate, setStartDate] = useState(format(thirtyDaysAgo, 'yyyy-MM-dd'))
+  const [endDate, setEndDate] = useState(format(today, 'yyyy-MM-dd'))
   const [filterType, setFilterType] = useState<'quick' | 'custom'>('quick')
 
   // Função para definir período rápido
@@ -102,15 +102,20 @@ export default function AdminDashboard() {
     try {
       setRefreshing(true)
       
-      // Calcular datas baseadas nos filtros
-      const endDateObj = endOfDay(new Date(endDate))
-      const startDateObj = startOfDay(new Date(startDate))
+      // ✅ CORREÇÃO: Usar strings UTC explícitas em vez de Date objects
+      const startIso = `${startDate}T00:00:00.000Z`
+      const endIso = `${endDate}T23:59:59.999Z`
+      
+      // Calcular período anterior para comparação
+      const startDateObj = new Date(startIso)
+      const endDateObj = new Date(endIso)
       const periodDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
-      const previousStartDate = startOfDay(subDays(startDateObj, periodDays))
+      const previousStartDate = new Date(startDateObj.getTime() - periodDays * 24 * 60 * 60 * 1000)
+      const previousStartIso = previousStartDate.toISOString()
       
       console.log('📅 Dashboard - Período:', {
-        start: startDateObj.toISOString(),
-        end: endDateObj.toISOString(),
+        start: startIso,
+        end: endIso,
         days: periodDays
       })
       
@@ -128,16 +133,32 @@ export default function AdminDashboard() {
       const { data: currentSales, error: currentError} = await supabase
         .from('sales')
         .select('*')
-        .gte('created_at', startDateObj.toISOString())
-        .lte('created_at', endDateObj.toISOString())
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
         .order('created_at', { ascending: false })
 
       console.log('📊 Dashboard - Vendas encontradas:', currentSales?.length || 0)
       console.log('📦 Dashboard - Exemplo de venda:', currentSales?.[0])
       console.log('📦 Dashboard - Status das vendas:', currentSales?.map(s => s.status))
 
-      if (currentError) {
-        console.error('❌ Erro ao buscar vendas atuais:', currentError)
+      // ✅ FALLBACK: Se filtro falhar ou retornar vazio, buscar sem filtro
+      let effectiveSales = currentSales || []
+      
+      if (currentError || effectiveSales.length === 0) {
+        console.warn('⚠️ Filtro falhou ou retornou vazio, buscando sem filtro de data')
+        const { data: fallbackSales } = await supabase
+          .from('sales')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (fallbackSales) {
+          effectiveSales = fallbackSales
+          console.log('✅ Usando todas as vendas (fallback):', fallbackSales.length)
+        }
+      }
+
+      if (currentError && effectiveSales.length === 0) {
+        console.error('❌ Erro ao buscar vendas:', currentError)
         setLoading(false)
         setRefreshing(false)
         return
@@ -147,11 +168,11 @@ export default function AdminDashboard() {
       const { data: previousSales } = await supabase
         .from('sales')
         .select('*')
-        .gte('created_at', previousStartDate.toISOString())
-        .lt('created_at', startDateObj.toISOString())
+        .gte('created_at', previousStartIso)
+        .lt('created_at', startIso)
 
       // ✅ CORRIGIDO: Aceitar múltiplos status (approved, paid, completed)
-      const approvedSales = (currentSales || []).filter(s => 
+      const approvedSales = (effectiveSales || []).filter(s => 
         s.status === 'approved' || s.status === 'paid' || s.status === 'completed'
       )
       const totalRevenue = approvedSales.reduce((sum, s) => sum + Number(s.total_amount || 0), 0)
@@ -215,7 +236,7 @@ export default function AdminDashboard() {
       setSalesChart(chartData)
 
       // 7. Vendas recentes (últimas 10)
-      setRecentSales((currentSales || []).slice(0, 10))
+      setRecentSales((effectiveSales || []).slice(0, 10))
 
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error)

@@ -43,11 +43,11 @@ export default function SalesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   
-  // ✅ CORRIGIDO: Inicializar com datas válidas (últimos 30 dias com fuso horário correto)
-  const defaultEnd = endOfDay(new Date())
-  const defaultStart = startOfDay(subDays(new Date(), 30))
-  const [startDate, setStartDate] = useState(format(defaultStart, 'yyyy-MM-dd'))
-  const [endDate, setEndDate] = useState(format(defaultEnd, 'yyyy-MM-dd'))
+  // ✅ GARANTIDO: startDate e endDate NUNCA são undefined
+  const today = new Date()
+  const thirtyDaysAgo = subDays(today, 30)
+  const [startDate, setStartDate] = useState(format(thirtyDaysAgo, 'yyyy-MM-dd'))
+  const [endDate, setEndDate] = useState(format(today, 'yyyy-MM-dd'))
   const [filterType, setFilterType] = useState<'quick' | 'custom'>('quick')
   const [period, setPeriod] = useState(30)
   
@@ -102,14 +102,15 @@ export default function SalesPage() {
     try {
       setRefreshing(true)
       
-      const start = startOfDay(new Date(startDate))
-      const end = endOfDay(new Date(endDate))
+      // ✅ CORREÇÃO: Usar strings UTC explícitas
+      const startIso = `${startDate}T00:00:00.000Z`
+      const endIso = `${endDate}T23:59:59.999Z`
       
       const { data, error } = await supabase
         .from('sales')
         .select('*')
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString())
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
         .order('created_at', { ascending: false })
 
       if (error) {

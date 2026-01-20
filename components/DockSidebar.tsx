@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { Home, Compass, Wrench, ShoppingBag, User, FileText } from "lucide-react"
+import { Home, Compass, Wrench, ShoppingBag, User, FileText, BarChart3, ShoppingCart } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -33,6 +33,20 @@ export default function DockSidebar() {
       href: "/dashboard/templates",
       label: "Templates",
       description: "Prompts por especialidade",
+    },
+    {
+      id: "analytics",
+      icon: <BarChart3 className="w-6 h-6" />,
+      href: "/dashboard/analytics",
+      label: "Analytics",
+      description: "Dados e estatísticas",
+    },
+    {
+      id: "abandoned-carts",
+      icon: <ShoppingCart className="w-6 h-6" />,
+      href: "/dashboard/abandoned-carts",
+      label: "Carrinhos",
+      description: "Recuperar vendas",
     },
     {
       id: "journey",

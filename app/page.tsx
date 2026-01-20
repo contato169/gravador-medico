@@ -732,7 +732,7 @@ export default function LandingPage() {
                         {/* Mockup */}
                         <div className="relative z-10">
                           <Image 
-                            src="/images/mockup-2-gravador-medico.jpeg"
+                            src="/images/MOCKUP2-GRAVADOR-MEDICO.png"
                             alt="Método Gravador Médico"
                             width={600}
                             height={500}
@@ -757,42 +757,40 @@ export default function LandingPage() {
               className="max-w-2xl mx-auto"
             >
               <Card3D className="relative group">
-                <div className="relative bg-white rounded-2xl md:rounded-3xl border-4 border-brand-500 shadow-2xl overflow-hidden">
+                <div className="relative bg-white rounded-xl md:rounded-2xl border-4 border-brand-500 shadow-2xl overflow-hidden max-w-md mx-auto">
                   
                   {/* Header verde */}
-                  <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white text-center py-5 px-4">
-                    <h3 className="text-2xl md:text-3xl lg:text-4xl font-black mb-2">GRAVADOR MÉDICO</h3>
-                    <p className="text-base md:text-lg font-medium">Método Completo + Bônus</p>
+                  <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white text-center py-3 md:py-4 px-4">
+                    <h3 className="text-xl md:text-2xl font-black mb-1">GRAVADOR MÉDICO</h3>
+                    <p className="text-sm md:text-base font-medium">Método Completo + Bônus</p>
                   </div>
 
                   {/* Conteúdo */}
-                  <div className="p-5 md:p-7 space-y-5">
+                  <div className="p-4 md:p-5 space-y-3 md:space-y-4">
                     
                     {/* Preços */}
-                    <div className="text-center space-y-2">
-                      <p className="text-gray-500 text-lg line-through">De: R$ 197</p>
+                    <div className="text-center space-y-1">
+                      <p className="text-gray-500 text-base md:text-lg line-through">De: R$ 197</p>
                       <div className="flex items-baseline justify-center gap-2">
-                        <span className="text-xl md:text-2xl text-gray-700 font-semibold">Por apenas:</span>
-                        <span className="text-5xl md:text-6xl font-black text-gray-900">R$ 36</span>
+                        <span className="text-lg md:text-xl text-gray-700 font-semibold">Por apenas:</span>
+                        <span className="text-4xl md:text-5xl font-black text-gray-900">R$ 36</span>
                       </div>
-                      <p className="text-gray-600 text-base">Pagamento único ou 8x de R$ 5,40</p>
+                      <p className="text-gray-600 text-sm md:text-base">Pagamento único ou 8x de R$ 5,40</p>
                     </div>
 
                     {/* Lista de benefícios */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {[
                         'Método completo de transcrição automática',
                         'Configuração do Atalho Mágico no iPhone',
                         'Prompt IA personalizado para prontuários',
-                        '4 Bônus Exclusivos para Potencializar seu Método',
-                        'Acesso vitalício com atualizações gratuitas',
-                        'Garantia incondicional de 7 dias'
+                        '4 Bônus Exclusivos para Potencializar seu Método'
                       ].map((item, index) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-brand-100 flex items-center justify-center mt-0.5">
-                            <Check className="w-3.5 h-3.5 text-brand-600" />
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 rounded-full bg-brand-100 flex items-center justify-center mt-0.5">
+                            <Check className="w-3 h-3 md:w-3.5 md:h-3.5 text-brand-600" />
                           </div>
-                          <p className="text-gray-700 text-sm md:text-base leading-snug text-left">{item}</p>
+                          <p className="text-gray-700 text-sm md:text-base leading-snug text-left font-medium">{item}</p>
                         </div>
                       ))}
                     </div>
@@ -805,42 +803,31 @@ export default function LandingPage() {
                       <motion.div
                         animate={{ scale: [1, 1.02, 1] }}
                         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        className="bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white py-4 md:py-5 rounded-xl text-xl md:text-2xl font-black shadow-lg transition-all"
+                        className="bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white py-3 md:py-4 rounded-xl text-lg md:text-xl font-black shadow-lg transition-all"
                       >
                         COMPRAR AGORA - R$ 36
                       </motion.div>
                     </button>
 
-                    {/* Trust badges */}
-                    <div className="flex items-center justify-center gap-4 pt-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-5 h-5" />
-                        <span>Compra segura</span>
+                    {/* Trust badges + Garantia em uma linha */}
+                    <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 pt-2 text-xs md:text-sm text-gray-600">
+                      <div className="flex items-center gap-1.5 text-brand-600 font-bold">
+                        <Shield className="w-4 h-4" />
+                        <span>Garantia de 7 dias</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Zap className="w-5 h-5" />
+                      <div className="flex items-center gap-1.5">
+                        <Zap className="w-4 h-4" />
                         <span>Acesso imediato</span>
                       </div>
                     </div>
 
-                    {/* Garantia */}
-                    <div className="text-center pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-center gap-2 text-brand-600">
-                        <Shield className="w-5 h-5" />
-                        <span className="font-bold">Garantia incondicional de 7 dias</span>
-                      </div>
-                    </div>
-
                     {/* Bônus limitado */}
-                    <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="text-2xl">🎁</div>
-                        <div className="flex-1">
-                          <p className="text-orange-800 font-bold text-sm md:text-base leading-relaxed">
-                            <span className="font-black">BÔNUS LIMITADO:</span> 4 Bônus Exclusivos (Ultrapersonalização + Mensagens + Avançado + Organização)<br />
-                            <span className="bg-orange-200 px-2 py-0.5 rounded mt-1 inline-block">Apenas {remainingAccess} acessos restantes</span>
-                          </p>
-                        </div>
+                    <div className="bg-orange-50 border-2 border-orange-300 rounded-lg md:rounded-xl p-3 mt-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="text-xl md:text-2xl">🎁</div>
+                        <p className="text-orange-800 font-bold text-xs md:text-sm">
+                          <span className="font-black">RECEBA 4 BÔNUS AVANÇADOS - APENAS HOJE</span>
+                        </p>
                       </div>
                     </div>
 
@@ -852,124 +839,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* SEÇÃO: ESTATÍSTICAS IMPACTANTES */}
-      <section className="relative py-6 md:py-8 lg:py-10 px-4 bg-white">
-        <div className="container mx-auto max-w-6xl">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-4 md:mb-6"
-          >
-            <div className="bg-gradient-to-br from-brand-50 via-brand-100 to-brand-50 rounded-lg md:rounded-xl lg:rounded-2xl p-4 md:p-6 lg:p-7 border-2 border-brand-200 shadow-xl">
-              <motion.h3
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="text-base sm:text-sm md:text-base lg:text-xl font-black text-center text-gray-900 mb-3 md:mb-5 lg:mb-6 px-2 leading-tight"
-              >
-                Médico, existe uma coisa que dinheiro não compra:{" "}
-                <span className="text-red-600">Tempo</span>
-              </motion.h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-white rounded-md md:rounded-lg p-3 md:p-4 border-2 border-brand-200 hover:border-brand-400 transition-colors shadow-lg"
-                >
-                  <div className="flex items-center justify-center mb-2 md:mb-3">
-                    <div className="bg-red-100 rounded-full p-2 md:p-2.5">
-                      <Clock className="w-4 h-4 md:w-5 md:h-5 text-red-600" />
-                    </div>
-                  </div>
-                  <h4 className="text-2xl sm:text-2xl md:text-3xl font-black text-red-600 text-center mb-1">
-                    10h+
-                  </h4>
-                  <p className="text-xs md:text-sm text-gray-700 text-center font-semibold leading-snug">
-                    65% dos médicos gastam <span className="text-red-600">por semana</span> com burocracia
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.4 }}
-                  className="bg-white rounded-md md:rounded-lg p-3 md:p-4 border-2 border-brand-200 hover:border-brand-400 transition-colors shadow-lg"
-                >
-                  <div className="flex items-center justify-center mb-2 md:mb-3">
-                    <div className="bg-orange-100 rounded-full p-2 md:p-2.5">
-                      <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-orange-600" />
-                    </div>
-                  </div>
-                  <h4 className="text-2xl sm:text-2xl md:text-3xl font-black text-orange-600 text-center mb-1">
-                    38h
-                  </h4>
-                  <p className="text-xs md:text-sm text-gray-700 text-center font-semibold leading-snug">
-                    Economize <span className="text-orange-600">por mês</span> em registros clínicos
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.5 }}
-                  className="bg-white rounded-md md:rounded-lg p-3 md:p-4 border-2 border-brand-200 hover:border-brand-400 transition-colors shadow-lg"
-                >
-                  <div className="flex items-center justify-center mb-2 md:mb-3">
-                    <div className="bg-yellow-100 rounded-full p-2 md:p-2.5">
-                      <Zap className="w-4 h-4 md:w-5 md:h-5 text-yellow-600" />
-                    </div>
-                  </div>
-                  <h4 className="text-2xl sm:text-2xl md:text-3xl font-black text-yellow-600 text-center mb-1">
-                    80%
-                  </h4>
-                  <p className="text-xs md:text-sm text-gray-700 text-center font-semibold leading-snug">
-                    Redução do tempo <span className="text-yellow-600">gasto digitando</span>
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.6 }}
-                  className="bg-white rounded-md md:rounded-lg p-3 md:p-4 border-2 border-brand-200 hover:border-brand-400 transition-colors shadow-lg"
-                >
-                  <div className="flex items-center justify-center mb-2 md:mb-3">
-                    <div className="bg-brand-100 rounded-full p-2 md:p-2.5">
-                      <Award className="w-4 h-4 md:w-5 md:h-5 text-brand-600" />
-                    </div>
-                  </div>
-                  <h4 className="text-2xl sm:text-2xl md:text-3xl font-black text-brand-600 text-center mb-1">
-                    5h
-                  </h4>
-                  <p className="text-xs md:text-sm text-gray-700 text-center font-semibold leading-snug">
-                    Recupere <span className="text-brand-600">por dia</span> que eram roubadas
-                  </p>
-                </motion.div>
-              </div>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.7 }}
-                className="text-center text-gray-700 text-base md:text-lg lg:text-xl mt-6 md:mt-8 font-semibold px-4"
-              >
-                <span className="text-brand-600">Medicina do jeito que sempre foi</span> — só que sem digitar
-              </motion.p>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
       {/* SEÇÃO BENEFÍCIOS COM CARDS E MOCKUPS */}
       <section id="beneficios" className="relative py-12 md:py-20 lg:py-24 px-4 bg-white">
         <div className="container mx-auto max-w-7xl">
@@ -1039,80 +908,11 @@ export default function LandingPage() {
                 <Card3D className="h-full group">
                   <div className="relative h-full bg-white backdrop-blur-xl rounded-2xl p-6 md:p-8 border-2 border-gray-100 hover:border-brand-300 transition-all duration-500 overflow-hidden shadow-lg hover:shadow-2xl flex flex-col">
                     
-                    {/* Loading bar effect */}
-                    <motion.div
-                      initial={{ width: 0 }}
-                      whileInView={{ width: "100%" }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.15 + 0.3, duration: 0.8 }}
-                      className={`absolute top-0 left-0 h-1 bg-gradient-to-r ${item.gradient}`}
-                    />
-                    
                     {/* Glow effect */}
                     <div className={`absolute inset-0 bg-gradient-to-r ${item.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-                    
-                    {/* Card image */}
-                    <div className="mb-6 relative overflow-hidden rounded-xl">
-                      {index === 0 ? (
-                        <Image 
-                          src="/images/CARD-CONSULTORIO-HORARIO.png"
-                          alt={item.title}
-                          width={400}
-                          height={300}
-                          className="w-full h-48 object-cover"
-                        />
-                      ) : index === 1 ? (
-                        <Image 
-                          src="/images/FOQUE-PACIENTE.png"
-                          alt={item.title}
-                          width={400}
-                          height={300}
-                          className="w-full h-48 object-cover"
-                        />
-                      ) : index === 2 ? (
-                        <Image 
-                          src="/images/ATENDA-MAIS.png"
-                          alt={item.title}
-                          width={400}
-                          height={300}
-                          className="w-full h-48 object-cover"
-                        />
-                      ) : index === 3 ? (
-                        <Image 
-                          src="/images/PRONTUARIOS-COMPLETOS.png"
-                          alt={item.title}
-                          width={400}
-                          height={300}
-                          className="w-full h-48 object-cover"
-                        />
-                      ) : index === 4 ? (
-                        <Image 
-                          src="/images/TRABALHE-TRANQUILIDADE.png"
-                          alt={item.title}
-                          width={400}
-                          height={300}
-                          className="w-full h-48 object-cover"
-                        />
-                      ) : index === 5 ? (
-                        <Image 
-                          src="/images/CONFIGURE-5MINUTOS.png"
-                          alt={item.title}
-                          width={400}
-                          height={300}
-                          className="w-full h-48 object-cover"
-                        />
-                      ) : (
-                        <div className={`w-full h-48 bg-gradient-to-br ${item.gradient} opacity-10 rounded-xl flex items-center justify-center`}>
-                          <item.icon className="w-16 h-16 text-gray-400" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <p className="text-gray-400 text-sm font-medium">Mockup Image</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
 
                     {/* Floating icon */}
-                    <div className="mb-4">
+                    <div className="mb-6">
                       <div className={`inline-flex bg-gradient-to-br ${item.gradient} p-2.5 md:p-3 rounded-lg shadow-md`}>
                         <item.icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                       </div>
@@ -1124,9 +924,6 @@ export default function LandingPage() {
                     <p className="text-base md:text-lg text-gray-600 leading-relaxed flex-1">
                       {item.description}
                     </p>
-
-                    {/* Decorative corner */}
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-brand-100/50 to-transparent rounded-bl-3xl" />
                   </div>
                 </Card3D>
               </motion.div>
@@ -1471,15 +1268,6 @@ export default function LandingPage() {
                   
                   {/* Animated gradient glow on hover */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-3xl`} />
-                  
-                  {/* Top accent bar */}
-                  <motion.div
-                    initial={{ width: 0 }}
-                    whileInView={{ width: "100%" }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.08 + 0.3, duration: 0.8 }}
-                    className={`absolute top-0 left-0 h-1 bg-gradient-to-r ${feature.gradient}`}
-                  />
 
                   {/* Mockup area with custom content */}
                   <div className="relative mb-6 aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-500">
@@ -1726,19 +1514,6 @@ export default function LandingPage() {
                       </>
                     )}
                   </div>
-
-                  {/* Floating icon badge - ajustado para não cortar */}
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="absolute -top-3 -right-3 z-20"
-                  >
-                    <div className="relative">
-                      <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} rounded-xl blur-lg opacity-50`} />
-                      <div className={`relative bg-gradient-to-br ${feature.gradient} p-2.5 rounded-xl shadow-xl`}>
-                        <feature.icon className="w-5 h-5 text-white" />
-                      </div>
-                    </div>
-                  </motion.div>
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col">
@@ -2407,9 +2182,10 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
+            className="max-w-3xl mx-auto"
           >
             <Card3D className="group">
-              <div className="relative bg-gradient-to-br from-brand-50 to-brand-50 backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 border-2 border-brand-200 text-center overflow-hidden shadow-2xl">
+              <div className="relative bg-gradient-to-br from-brand-50 to-brand-50 backdrop-blur-xl rounded-xl md:rounded-2xl p-5 md:p-7 border-2 border-brand-200 text-center overflow-hidden shadow-2xl">
                 
                 {/* Glow effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-brand-500 to-brand-500 opacity-0 group-hover:opacity-5 transition-opacity" />
@@ -2418,30 +2194,30 @@ export default function LandingPage() {
                 <motion.div
                   animate={{ scale: [1, 1.05, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="relative inline-block mb-6"
+                  className="relative inline-block mb-4 md:mb-5"
                 >
                   <div className="absolute inset-0 bg-brand-500 rounded-full blur-2xl opacity-30" />
-                  <div className="relative bg-gradient-to-br from-brand-500 to-brand-300 p-5 md:p-6 rounded-full shadow-xl">
-                    <Shield className="w-12 h-12 md:w-16 md:h-16 text-white" />
+                  <div className="relative bg-gradient-to-br from-brand-500 to-brand-300 p-4 md:p-5 rounded-full shadow-xl">
+                    <Shield className="w-10 h-10 md:w-12 md:h-12 text-white" />
                   </div>
                 </motion.div>
 
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 md:mb-6 px-2">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black mb-3 md:mb-4 px-2">
                   <span className="bg-gradient-to-r from-brand-500 to-brand-300 bg-clip-text text-transparent">
                     Garantia de 7 Dias
                   </span>
                 </h2>
 
-                <p className="text-base md:text-lg text-gray-700 leading-relaxed mb-4 md:mb-6 max-w-2xl mx-auto px-2">
+                <p className="text-base md:text-lg text-gray-700 leading-relaxed mb-3 md:mb-4 max-w-2xl mx-auto px-2">
                   Teste o método. Experimente. Configure em 5 minutos. Grave sua primeira consulta. Use durante uma semana inteira.
                 </p>
 
-                <p className="text-base md:text-lg text-gray-700 leading-relaxed mb-6 md:mb-8 max-w-2xl mx-auto px-2">
+                <p className="text-base md:text-lg text-gray-700 leading-relaxed mb-4 md:mb-5 max-w-2xl mx-auto px-2">
                   Se não ficar satisfeito, por qualquer motivo, é só entrar em contato. Devolvemos 100% do seu dinheiro.
                 </p>
 
-                <div className="inline-block bg-brand-100 border-2 border-brand-300 rounded-xl p-4 md:p-5">
-                  <p className="text-brand-700 text-sm md:text-base font-bold">
+                <div className="inline-block bg-brand-100 border-2 border-brand-300 rounded-lg md:rounded-xl p-3 md:p-4">
+                  <p className="text-brand-700 text-xs md:text-sm font-bold">
                     Sem perguntas. Sem burocracia. Rápido e simples.
                   </p>
                 </div>
@@ -2452,7 +2228,7 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 }}
-                  className="mt-8"
+                  className="mt-6 md:mt-7"
                 >
                   <motion.button
                     onClick={scrollToCheckout}
@@ -2460,13 +2236,13 @@ export default function LandingPage() {
                       scale: [1, 1.03, 1]
                     }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                    className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-[#5DBEA3] via-[#80D4C3] to-[#5DBEA3] bg-[length:200%_100%] animate-gradient text-white px-10 sm:px-14 py-5 sm:py-6 rounded-full text-xl sm:text-2xl font-black shadow-2xl hover:shadow-[#5DBEA3]/50 transition-all whitespace-nowrap"
+                    className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-[#5DBEA3] via-[#80D4C3] to-[#5DBEA3] bg-[length:200%_100%] animate-gradient text-white px-8 sm:px-10 py-4 sm:py-5 rounded-full text-lg sm:text-xl font-black shadow-2xl hover:shadow-[#5DBEA3]/50 transition-all whitespace-nowrap"
                   >
-                    <Mic className="w-6 h-6 flex-shrink-0" />
+                    <Mic className="w-5 h-5 flex-shrink-0" />
                     <span>Testar sem risco</span>
-                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                   </motion.button>
-                  <p className="text-base text-gray-600 mt-4 font-semibold">Garantia total • Apenas R$ 36</p>
+                  <p className="text-sm md:text-base text-gray-600 mt-3 font-semibold">Garantia total • Apenas R$ 36</p>
                 </motion.div>
               </div>
             </Card3D>
@@ -2495,43 +2271,41 @@ export default function LandingPage() {
               Mais tempo para ouvir. Mais atenção para cuidar. Mais energia para o que realmente importa: seus pacientes.
             </p>
 
-            <Card3D className="group max-w-2xl mx-auto">
-              <div className="relative bg-white rounded-2xl md:rounded-3xl border-4 border-brand-500 shadow-2xl overflow-hidden">
+            <Card3D className="group max-w-md mx-auto">
+              <div className="relative bg-white rounded-xl md:rounded-2xl border-4 border-brand-500 shadow-2xl overflow-hidden">
                 
                 {/* Header verde */}
-                <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white text-center py-5 px-4">
-                  <h3 className="text-2xl md:text-3xl lg:text-4xl font-black mb-2">GRAVADOR MÉDICO</h3>
-                  <p className="text-base md:text-lg font-medium">Método Completo + Bônus</p>
+                <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white text-center py-3 md:py-4 px-4">
+                  <h3 className="text-xl md:text-2xl font-black mb-1">GRAVADOR MÉDICO</h3>
+                  <p className="text-sm md:text-base font-medium">Método Completo + Bônus</p>
                 </div>
 
                 {/* Conteúdo */}
-                <div className="p-5 md:p-7 space-y-5">
+                <div className="p-4 md:p-5 space-y-3 md:space-y-4">
                   
                   {/* Preços */}
-                  <div className="text-center space-y-2">
-                    <p className="text-gray-500 text-lg line-through">De: R$ 197</p>
+                  <div className="text-center space-y-1">
+                    <p className="text-gray-500 text-base md:text-lg line-through">De: R$ 197</p>
                     <div className="flex items-baseline justify-center gap-2">
-                      <span className="text-xl md:text-2xl text-gray-700 font-semibold">Por apenas:</span>
-                      <span className="text-5xl md:text-6xl font-black text-gray-900">R$ 36</span>
+                      <span className="text-lg md:text-xl text-gray-700 font-semibold">Por apenas:</span>
+                      <span className="text-4xl md:text-5xl font-black text-gray-900">R$ 36</span>
                     </div>
-                    <p className="text-gray-600 text-base">Pagamento único ou 8x de R$ 5,40</p>
+                    <p className="text-gray-600 text-sm md:text-base">Pagamento único ou 8x de R$ 5,40</p>
                   </div>
 
                   {/* Lista de benefícios */}
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     {[
                       'Método completo de transcrição automática',
                       'Configuração do Atalho Mágico no iPhone',
                       'Prompt IA personalizado para prontuários',
-                      '4 Bônus Exclusivos para Potencializar seu Método',
-                      'Acesso vitalício com atualizações gratuitas',
-                      'Garantia incondicional de 7 dias'
+                      '4 Bônus Exclusivos para Potencializar seu Método'
                     ].map((item, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-brand-100 flex items-center justify-center mt-0.5">
-                          <Check className="w-3.5 h-3.5 text-brand-600" />
+                      <div key={index} className="flex items-start gap-2">
+                        <div className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 rounded-full bg-brand-100 flex items-center justify-center mt-0.5">
+                          <Check className="w-3 h-3 md:w-3.5 md:h-3.5 text-brand-600" />
                         </div>
-                        <p className="text-gray-700 text-sm md:text-base leading-snug text-left">{item}</p>
+                        <p className="text-gray-700 text-sm md:text-base leading-snug text-left font-medium">{item}</p>
                       </div>
                     ))}
                   </div>
@@ -2544,42 +2318,31 @@ export default function LandingPage() {
                     <motion.div
                       animate={{ scale: [1, 1.02, 1] }}
                       transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      className="bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white py-4 md:py-5 rounded-xl text-xl md:text-2xl font-black shadow-lg transition-all"
+                      className="bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white py-3 md:py-4 rounded-xl text-lg md:text-xl font-black shadow-lg transition-all"
                     >
                       COMPRAR AGORA - R$ 36
                     </motion.div>
                   </button>
 
-                  {/* Trust badges */}
-                  <div className="flex items-center justify-center gap-4 pt-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-5 h-5" />
-                      <span>Compra segura</span>
+                  {/* Trust badges + Garantia em uma linha */}
+                  <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 pt-2 text-xs md:text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5 text-brand-600 font-bold">
+                      <Shield className="w-4 h-4" />
+                      <span>Garantia de 7 dias</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5" />
+                    <div className="flex items-center gap-1.5">
+                      <Zap className="w-4 h-4" />
                       <span>Acesso imediato</span>
                     </div>
                   </div>
 
-                  {/* Garantia */}
-                  <div className="text-center pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-center gap-2 text-brand-600">
-                      <Shield className="w-5 h-5" />
-                      <span className="font-bold">Garantia incondicional de 7 dias</span>
-                    </div>
-                  </div>
-
                   {/* Bônus limitado */}
-                  <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="text-2xl">🎁</div>
-                      <div className="flex-1">
-                        <p className="text-orange-800 font-bold text-sm md:text-base leading-relaxed">
-                          <span className="font-black">BÔNUS LIMITADO:</span> 4 Bônus Exclusivos (Ultrapersonalização + Mensagens + Avançado + Organização)<br />
-                          <span className="bg-orange-200 px-2 py-0.5 rounded mt-1 inline-block">Apenas {remainingAccess} acessos restantes</span>
-                        </p>
-                      </div>
+                  <div className="bg-orange-50 border-2 border-orange-300 rounded-lg md:rounded-xl p-3 mt-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="text-xl md:text-2xl">🎁</div>
+                      <p className="text-orange-800 font-bold text-xs md:text-sm">
+                        <span className="font-black">RECEBA 4 BÔNUS AVANÇADOS - APENAS HOJE</span>
+                      </p>
                     </div>
                   </div>
 
@@ -2666,12 +2429,13 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4 }}
+            className="max-w-2xl mx-auto"
           >
-            <div className="bg-gradient-to-br from-white to-brand-50/30 rounded-2xl p-8 md:p-10 shadow-lg border-2 border-brand-200 text-center">
-              <h3 className="text-2xl md:text-3xl font-black text-gray-900 mb-4">
+            <div className="bg-gradient-to-br from-white to-brand-50/30 rounded-xl md:rounded-2xl p-5 md:p-6 shadow-lg border-2 border-brand-200 text-center">
+              <h3 className="text-xl md:text-2xl font-black text-gray-900 mb-3">
                 E se eu não gostar?
               </h3>
-              <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
+              <p className="text-base md:text-lg text-gray-700 leading-relaxed">
                 Você tem 7 dias de garantia incondicional. Teste o método, configure, use nas suas consultas. Se não ficar satisfeito por qualquer motivo, é só entrar em contato que devolvemos 100% do seu dinheiro.
               </p>
             </div>

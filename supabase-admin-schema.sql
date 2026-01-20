@@ -250,8 +250,8 @@ ORDER BY sales_count DESC;
 -- EXEMPLO (SUBSTITUA pelo seu UUID):
 -- INSERT INTO public.profiles (id, email, full_name, role)
 -- VALUES (
---   'seu-uuid-do-auth-users-aqui',
---   'seuemail@gmail.com',
+--   'ef9a5410-494b-46c7-a0c0-4f863536967b',
+--   'contato@helciomattos.com.br',
 --   'Admin Principal',
 --   'admin'
 -- )

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   TrendingUp,
@@ -52,6 +53,7 @@ interface RecentSale {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalRevenue: 0,
     totalOrders: 0,
@@ -405,7 +407,10 @@ export default function AdminDashboard() {
               <h3 className="text-xl font-bold text-white">Vendas Recentes</h3>
               <p className="text-sm text-gray-400 mt-1">Últimas {recentSales.length} transações</p>
             </div>
-            <button className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
+            <button 
+              onClick={() => router.push('/admin/sales')}
+              className="text-brand-400 font-semibold hover:text-brand-300 transition-colors"
+            >
               Ver todas →
             </button>
           </div>
@@ -450,7 +455,11 @@ export default function AdminDashboard() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button className="text-brand-400 hover:text-brand-300 font-semibold text-sm transition-colors">
+                    <button 
+                      onClick={() => router.push(`/admin/sales`)}
+                      className="text-brand-400 hover:text-brand-300 font-semibold text-sm transition-colors"
+                      title="Ver detalhes"
+                    >
                       <Eye className="w-5 h-5 inline" />
                     </button>
                   </td>

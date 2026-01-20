@@ -315,15 +315,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* User Info */}
           <div className="flex-shrink-0 border-t border-gray-700 p-4">
             <div className="flex items-center">
-              <div 
-                onClick={() => router.push('/admin/profile')}
-                className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center cursor-pointer hover:opacity-80 transition"
-              >
-                <span className="text-white font-bold text-sm">
-                  {userEmail?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="ml-3 flex-1">
+              <div className="flex-1">
                 <p className="text-sm font-semibold text-white truncate">{userEmail}</p>
                 <p className="text-xs text-gray-400">Administrador</p>
               </div>
@@ -410,18 +402,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {/* User Info */}
               <div className="border-t border-gray-700 p-4">
                 <div className="flex items-center">
-                  <div 
-                    onClick={() => {
-                      router.push('/admin/profile')
-                      setSidebarOpen(false)
-                    }}
-                    className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center cursor-pointer hover:opacity-80 transition"
-                  >
-                    <span className="text-white font-bold text-sm">
-                      {userEmail?.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="ml-3 flex-1">
+                  <div className="flex-1">
                     <p className="text-sm font-semibold text-white truncate">{userEmail}</p>
                     <p className="text-xs text-gray-400">Administrador</p>
                   </div>

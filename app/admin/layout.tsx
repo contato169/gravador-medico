@@ -1,0 +1,315 @@
+"use client"
+
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { 
+  LayoutDashboard, 
+  ShoppingCart, 
+  Users, 
+  Settings, 
+  LogOut,
+  Menu,
+  X,
+  BarChart3,
+  Package,
+  Bell,
+  Search,
+} from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  // Verificar autenticação e role de admin
+  useEffect(() => {
+    checkAuth()
+  }, [])
+
+  const checkAuth = async () => {
+    try {
+      // Verificar se está logado no Supabase Auth
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/login?redirect=/admin/dashboard')
+        return
+      }
+
+      // Verificar se é admin
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (error || !profile || profile.role !== 'admin') {
+        console.error('❌ Usuário não é admin')
+        router.push('/')
+        return
+      }
+
+      setUserEmail(user.email || null)
+      setLoading(false)
+    } catch (error) {
+      console.error('Erro ao verificar auth:', error)
+      router.push('/login')
+    }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
+  const menuItems = [
+    { 
+      icon: LayoutDashboard, 
+      label: 'Visão Geral', 
+      href: '/admin/dashboard',
+      badge: null
+    },
+    { 
+      icon: ShoppingCart, 
+      label: 'Vendas', 
+      href: '/admin/sales',
+      badge: null
+    },
+    { 
+      icon: Users, 
+      label: 'Clientes', 
+      href: '/admin/customers',
+      badge: null
+    },
+    { 
+      icon: Package, 
+      label: 'Produtos', 
+      href: '/admin/products',
+      badge: null
+    },
+    { 
+      icon: BarChart3, 
+      label: 'Relatórios', 
+      href: '/admin/reports',
+      badge: null
+    },
+    { 
+      icon: Bell, 
+      label: 'Webhooks', 
+      href: '/admin/webhooks',
+      badge: null
+    },
+    { 
+      icon: Settings, 
+      label: 'Configurações', 
+      href: '/admin/settings',
+      badge: null
+    },
+  ]
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Verificando permissões...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
+        <div className="flex flex-col flex-grow bg-gradient-to-b from-gray-900 to-gray-800 overflow-y-auto shadow-2xl">
+          {/* Logo */}
+          <div className="flex items-center flex-shrink-0 px-6 py-6 border-b border-gray-700">
+            <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center">
+              <LayoutDashboard className="w-6 h-6 text-white" />
+            </div>
+            <div className="ml-3">
+              <h1 className="text-xl font-black text-white">Admin Panel</h1>
+              <p className="text-xs text-gray-400">Gravador Médico</p>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-4 py-6 space-y-1">
+            {menuItems.map((item) => {
+              const isActive = pathname === item.href
+              const Icon = item.icon
+              
+              return (
+                <button
+                  key={item.href}
+                  onClick={() => router.push(item.href)}
+                  className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+                    isActive
+                      ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-500/50'
+                      : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 mr-3" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* User Info */}
+          <div className="flex-shrink-0 border-t border-gray-700 p-4">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">
+                  {userEmail?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-semibold text-white truncate">{userEmail}</p>
+                <p className="text-xs text-gray-400">Administrador</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="ml-2 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                title="Sair"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Sidebar */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+          
+          {/* Sidebar */}
+          <div className="fixed inset-y-0 left-0 w-full max-w-xs bg-gradient-to-b from-gray-900 to-gray-800 shadow-2xl">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-6 border-b border-gray-700">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center">
+                    <LayoutDashboard className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="ml-3">
+                    <h1 className="text-xl font-black text-white">Admin Panel</h1>
+                    <p className="text-xs text-gray-400">Gravador Médico</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Navigation */}
+              <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+                {menuItems.map((item) => {
+                  const isActive = pathname === item.href
+                  const Icon = item.icon
+                  
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={() => {
+                        router.push(item.href)
+                        setSidebarOpen(false)
+                      }}
+                      className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg'
+                          : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 mr-3" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                    </button>
+                  )
+                })}
+              </nav>
+
+              {/* User Info */}
+              <div className="border-t border-gray-700 p-4">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">
+                      {userEmail?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-semibold text-white truncate">{userEmail}</p>
+                    <p className="text-xs text-gray-400">Administrador</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="ml-2 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="lg:pl-72">
+        {/* Top Bar */}
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+
+            {/* Search Bar */}
+            <div className="hidden sm:flex flex-1 max-w-lg ml-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar vendas, clientes..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Right Actions */}
+            <div className="flex items-center gap-4 ml-auto">
+              <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg relative">
+                <Bell className="w-6 h-6" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Page Content */}
+        <main className="p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  )
+}

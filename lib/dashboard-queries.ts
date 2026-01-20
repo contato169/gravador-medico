@@ -137,6 +137,37 @@ export async function fetchCRMFunnel(
 }
 
 // ========================================
+// 5.1 Fetch: Atividades CRM de um contato
+// ========================================
+export async function fetchCRMActivities(
+  supabase: SupabaseClient,
+  contactId?: string,
+  limit: number = 50
+) {
+  try {
+    let query = supabase
+      .from('crm_activities')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    
+    if (contactId) {
+      query = query.eq('contact_id', contactId)
+    }
+    
+    const { data, error } = await query
+    
+    if (error) throw error
+    
+    return { data: data || [], error: null }
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar atividades CRM:', error)
+    return { data: [], error }
+  }
+}
+
+// ========================================
 // 6. Fetch: Contatos CRM com filtros
 // ========================================
 export async function fetchCRMContacts(
@@ -368,10 +399,38 @@ export async function fetchTopProducts(
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, limit)
     
-    return { data: topProducts, error: null }
+    return { data: topProducts || [], error: null }
     
   } catch (error) {
     console.error('❌ Erro ao buscar top produtos:', error)
+    return { data: [], error }
+  }
+}
+
+// ========================================
+// 11. Fetch: Vendas por fonte (UTM)
+// ========================================
+export async function fetchSalesBySource(
+  supabase: SupabaseClient,
+  startDate: string,
+  endDate: string
+) {
+  try {
+    const { startIso, endIso } = createDateRange(startDate, endDate)
+    
+    const { data, error } = await supabase
+      .from('sales_by_source')
+      .select('*')
+      .gte('first_sale', startDate)
+      .lte('first_sale', endDate)
+      .order('total_revenue', { ascending: false })
+    
+    if (error) throw error
+    
+    return { data: data || [], error: null }
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar vendas por fonte:', error)
     return { data: [], error }
   }
 }

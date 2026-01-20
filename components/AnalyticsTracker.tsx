@@ -70,13 +70,13 @@ export default function AnalyticsTracker() {
       // ============================================
       // 2. DEVICE/OS/BROWSER (ua-parser-js)
       // ============================================
-      const parser = new (UAParser as any)(navigator.userAgent)
-      const result = parser.getResult()
+      const parser = UAParser(navigator.userAgent)
+      const result = parser
 
-      const deviceType = result.device.type || 'desktop' // mobile, tablet, desktop
-      const os = result.os.name || 'Desconhecido' // iOS, Android, Windows, macOS
-      const browser = result.browser.name || 'Desconhecido' // Chrome, Safari, Firefox
-      const browserVersion = result.browser.version || ''
+      const deviceType = result.device?.type || 'desktop' // mobile, tablet, desktop
+      const os = result.os?.name || 'Desconhecido' // iOS, Android, Windows, macOS
+      const browser = result.browser?.name || 'Desconhecido' // Chrome, Safari, Firefox
+      const browserVersion = result.browser?.version || ''
 
       // ============================================
       // 3. UTM PARAMETERS (Campanhas de Marketing)

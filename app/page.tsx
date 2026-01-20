@@ -239,6 +239,9 @@ export default function LandingPage() {
     }
   }
 
+  // Estado para modal de especialidades
+  const [showAllSpecialties, setShowAllSpecialties] = useState(false)
+
   return (
     <>
       <div className="min-h-screen bg-white text-gray-900 overflow-hidden">
@@ -1714,7 +1717,7 @@ export default function LandingPage() {
                 className="w-[260px] flex-shrink-0 group h-full"
               >
                 <Card3D className="h-full">
-                  <div className="relative bg-white rounded-2xl p-4 border-2 border-gray-200 hover:border-brand-400 transition-all duration-300 shadow-lg hover:shadow-2xl h-full flex flex-col">
+                  <div className="relative bg-white rounded-2xl p-4 border-2 border-gray-200 hover:border-brand-400 transition-all duration-300 shadow-lg hover:shadow-2xl h-full flex flex-col min-h-[380px]">
 
                     {/* Nome da especialidade */}
                     <h3 className="text-lg md:text-xl font-black text-gray-900 mb-3 text-center">
@@ -1761,7 +1764,10 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="mt-8 text-center"
           >
-            <button className="px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg transition-colors">
+            <button 
+              onClick={() => setShowAllSpecialties(true)}
+              className="px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg transition-colors"
+            >
               Ver todas as especialidades
             </button>
           </motion.div>
@@ -2579,6 +2585,49 @@ export default function LandingPage() {
           animation: shine 2s infinite;
         }
       `}</style>
+
+      {/* Modal de Todas as Especialidades */}
+      <AnimatePresence>
+        {showAllSpecialties && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAllSpecialties(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-y-auto p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-black text-gray-900">Todas as Especialidades</h2>
+                <button
+                  onClick={() => setShowAllSpecialties(false)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  "Ginecologia", "Ortopedia", "Clínica Geral", "Pediatria",
+                  "Dermatologia", "Psiquiatria", "Endocrinologia", "Cardiologia"
+                ].map((specialty, index) => (
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg hover:bg-brand-50 transition-colors">
+                    <h3 className="font-bold text-gray-900">{specialty}</h3>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     </>
   )

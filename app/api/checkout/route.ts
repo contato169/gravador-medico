@@ -56,7 +56,53 @@ export async function POST(request: NextRequest) {
       payment_method: body.paymentMethod === 'credit' ? 'credit_card' : body.paymentMethod || 'pix',
       order_bumps: body.orderBumps || [], // camelCase do frontend
       utm_params: body.utm_params || {},
-      discount: body.discount || undefined, // Desconto do cupom
+      discount: body.discount || 0,
+    }
+    
+    // ⚠️ SAFETY CHECK: Validar que o desconto não é maior que o subtotal
+    // Isso evita erro 404 da Appmax por valor negativo
+    const MAIN_PRODUCT_PRICE = 36 // Produto principal
+    const orderBumpsTotal = (body.orderBumps || []).reduce((sum: number, bump: any) => {
+      // Mapear IDs para preços
+      const prices: Record<string, number> = {
+        '32989468': 29.90, // Conteúdo Infinito Instagram
+        '32989503': 97,    // Implementação Assistida
+        '32989520': 39.90  // Análise Inteligente
+      }
+      return sum + (prices[bump.product_id] || 0)
+    }, 0)
+    
+    const subtotal = MAIN_PRODUCT_PRICE + orderBumpsTotal
+    const MINIMUM_ORDER_VALUE = 0.10 // Valor mínimo para gateways aceitarem
+    
+    // Limitar desconto para nunca dar valor negativo ou zero
+    if (orderData.discount >= subtotal) {
+      console.warn(`⚠️ Desconto (R$ ${orderData.discount}) maior que subtotal (R$ ${subtotal}). Limitando...`)
+      orderData.discount = subtotal - MINIMUM_ORDER_VALUE
+    }
+    
+    const finalTotal = subtotal - orderData.discount
+    
+    console.log('💰 Validação de preços:', {
+      subtotal: subtotal.toFixed(2),
+      discount: orderData.discount.toFixed(2),
+      finalTotal: finalTotal.toFixed(2),
+      isValid: finalTotal >= MINIMUM_ORDER_VALUE
+    })
+    
+    if (finalTotal < MINIMUM_ORDER_VALUE) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Valor do pedido inválido após desconto',
+          details: {
+            subtotal,
+            discount: orderData.discount,
+            total: finalTotal
+          }
+        },
+        { status: 400 }
+      )
     }
     
     // Se for cartão de crédito, adiciona dados do cartão

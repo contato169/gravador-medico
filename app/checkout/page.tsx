@@ -123,16 +123,30 @@ export default function CheckoutPage() {
     setCupomError("")
   }
 
-  // Calcular desconto do cupom
+  // Calcular desconto do cupom COM PROTEÇÃO CONTRA VALORES NEGATIVOS
   const calculateCupomDiscount = (subtotal: number) => {
     if (!appliedCupom || !CUPONS[appliedCupom]) return 0
     
     const cupom = CUPONS[appliedCupom]
+    let discount = 0
+    
     if (cupom.type === 'fixed') {
-      return Math.min(cupom.value, subtotal) // Não pode ser maior que o subtotal
+      discount = cupom.value
     } else {
-      return (subtotal * cupom.value) / 100
+      discount = (subtotal * cupom.value) / 100
     }
+    
+    // SAFETY CHECK 1: Desconto nunca maior que subtotal
+    discount = Math.min(discount, subtotal)
+    
+    // SAFETY CHECK 2: Garantir que sempre sobre pelo menos R$ 0,10
+    // (Muitos gateways recusam transações zeradas ou negativas)
+    const MINIMUM_ORDER_VALUE = 0.10
+    if (subtotal - discount < MINIMUM_ORDER_VALUE) {
+      discount = subtotal - MINIMUM_ORDER_VALUE
+    }
+    
+    return Math.max(0, discount) // Nunca retornar desconto negativo
   }
 
   // Order Bumps
@@ -1028,6 +1042,12 @@ export default function CheckoutPage() {
                       <p className="text-xs md:text-sm text-green-700 font-semibold">
                         Você economizou R$ {cupomDiscount.toFixed(2)}! 🎉
                       </p>
+                      {CUPONS[appliedCupom] && CUPONS[appliedCupom].type === 'fixed' && CUPONS[appliedCupom].value > subtotal && (
+                        <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          Desconto limitado ao valor do pedido
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div>

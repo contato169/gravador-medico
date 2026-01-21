@@ -41,7 +41,7 @@ CREATE OR REPLACE FUNCTION auto_add_lead_from_abandoned_cart()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Verificar se já existe um lead com este email
-  IF NOT EXISTS (SELECT 1 FROM crm_leads WHERE email = NEW.customer_email) THEN
+  IF NEW.customer_email IS NOT NULL AND NOT EXISTS (SELECT 1 FROM crm_leads WHERE email = NEW.customer_email) THEN
     INSERT INTO crm_leads (
       name,
       email,
@@ -54,35 +54,29 @@ BEGIN
       utm_source,
       utm_medium,
       utm_campaign,
-      device_type,
-      city,
-      country,
       created_at
     ) VALUES (
       NEW.customer_name,
       NEW.customer_email,
       NEW.customer_phone,
-      'lead', -- Novo lead
-      NEW.cart_value,
+      'lead',
+      NEW.total_amount,
       'Checkout - Carrinho Abandonado',
-      'Abandonou carrinho na etapa: ' || COALESCE(NEW.checkout_step, 'início'),
+      'Abandonou carrinho',
       NEW.session_id,
       NEW.utm_source,
       NEW.utm_medium,
       NEW.utm_campaign,
-      NEW.device_type,
-      NEW.city,
-      NEW.country,
       NEW.created_at
     );
     
     RAISE NOTICE '✅ Lead adicionado ao CRM: %', NEW.customer_email;
-  ELSE
+  ELSIF NEW.customer_email IS NOT NULL THEN
     -- Atualizar lead existente
     UPDATE crm_leads 
     SET 
-      value = NEW.cart_value,
-      notes = 'Abandonou carrinho novamente em: ' || COALESCE(NEW.checkout_step, 'início'),
+      value = NEW.total_amount,
+      notes = 'Abandonou carrinho novamente',
       updated_at = NOW()
     WHERE email = NEW.customer_email;
     
@@ -224,13 +218,9 @@ INSERT INTO crm_leads (
   value,
   source,
   notes,
-  session_id,
   utm_source,
   utm_medium,
   utm_campaign,
-  device_type,
-  city,
-  country,
   created_at,
   updated_at
 )
@@ -246,13 +236,9 @@ SELECT DISTINCT ON (customer_email)
   total_amount,
   'Checkout - Importação Histórica',
   'Importado de vendas antigas',
-  sales.session_id,
   sales.utm_source,
   sales.utm_medium,
   sales.utm_campaign,
-  NULL as device_type,
-  NULL as city,
-  NULL as country,
   sales.created_at,
   sales.updated_at
 FROM sales
@@ -274,9 +260,6 @@ INSERT INTO crm_leads (
   utm_source,
   utm_medium,
   utm_campaign,
-  device_type,
-  city,
-  country,
   created_at,
   updated_at
 )
@@ -288,16 +271,13 @@ SELECT DISTINCT ON (customer_email)
     WHEN status = 'recovered' THEN 'won'
     ELSE 'contact'
   END as stage,
-  cart_value,
+  total_amount,
   'Checkout - Carrinho Abandonado',
-  'Abandonou em: ' || COALESCE(checkout_step, 'início'),
+  'Abandonou carrinho',
   abandoned_carts.session_id,
   abandoned_carts.utm_source,
   abandoned_carts.utm_medium,
   abandoned_carts.utm_campaign,
-  abandoned_carts.device_type,
-  abandoned_carts.city,
-  abandoned_carts.country,
   abandoned_carts.created_at,
   abandoned_carts.updated_at
 FROM abandoned_carts

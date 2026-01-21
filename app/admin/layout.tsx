@@ -19,7 +19,8 @@ import {
   TrendingUp,
   ShoppingBag,
   CheckCircle2,
-  Clock
+  Clock,
+  MessageSquare
 } from 'lucide-react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -172,6 +173,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: Users, 
       label: 'CRM', 
       href: '/admin/crm',
+      badge: null
+    },
+    { 
+      icon: MessageSquare, 
+      label: 'WhatsApp', 
+      href: '/admin/whatsapp',
       badge: null
     },
     { 

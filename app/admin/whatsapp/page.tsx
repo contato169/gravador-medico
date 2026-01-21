@@ -50,10 +50,14 @@ export default function WhatsAppInboxPage() {
     scrollToBottom()
   }, [messages])
 
-  // Realtime: Escutar novas mensagens
+  // ================================================================
+  // REALTIME: Escutar novas mensagens e atualizações de contatos
+  // ================================================================
   useEffect(() => {
+    console.log('🔌 Conectando ao Supabase Realtime...')
+    
     const channel = supabaseAdmin
-      .channel('whatsapp-realtime')
+      .channel('whatsapp-realtime-inbox')
       .on(
         'postgres_changes',
         {
@@ -62,24 +66,93 @@ export default function WhatsAppInboxPage() {
           table: 'whatsapp_messages'
         },
         (payload) => {
-          console.log('📩 Nova mensagem recebida:', payload.new)
+          console.log('📩 Nova mensagem recebida via Realtime:', payload.new)
           
-          // Atualizar lista se for da conversa atual
-          if (payload.new.remote_jid === selectedRemoteJid) {
-            setMessages((prev) => [...prev, payload.new as WhatsAppMessage])
+          const newMessage = payload.new as WhatsAppMessage
+          
+          // Se a mensagem pertence ao chat atual aberto
+          if (newMessage.remote_jid === selectedRemoteJid) {
+            console.log('✅ Mensagem do chat atual - Adicionando ao estado')
+            setMessages((prev) => {
+              // Evitar duplicatas
+              const exists = prev.some(msg => msg.id === newMessage.id)
+              if (exists) return prev
+              return [...prev, newMessage]
+            })
+            
+            // Scroll automático para a nova mensagem
+            setTimeout(() => scrollToBottom(), 100)
           }
           
-          // Recarregar conversas
+          // Atualizar lista de conversas (sidebar) para mostrar última mensagem
           loadConversations()
           loadStats()
         }
       )
-      .subscribe()
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'whatsapp_contacts'
+        },
+        (payload) => {
+          console.log('🔄 Contato atualizado via Realtime:', payload.new)
+          
+          // Atualizar lista de conversas para refletir mudanças
+          setConversations((prev) => {
+            const updated = prev.map((conv) => {
+              if (conv.remote_jid === (payload.new as any).remote_jid) {
+                return { ...conv, ...payload.new } as WhatsAppConversation
+              }
+              return conv
+            })
+            
+            // Reordenar por última mensagem
+            return updated.sort((a, b) => {
+              const dateA = a.last_message_timestamp ? new Date(a.last_message_timestamp).getTime() : 0
+              const dateB = b.last_message_timestamp ? new Date(b.last_message_timestamp).getTime() : 0
+              return dateB - dateA
+            })
+          })
+          
+          loadStats()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'whatsapp_contacts'
+        },
+        (payload) => {
+          console.log('➕ Novo contato adicionado via Realtime:', payload.new)
+          
+          // Adicionar novo contato à lista se não existir
+          setConversations((prev) => {
+            const exists = prev.some(conv => conv.remote_jid === (payload.new as any).remote_jid)
+            if (exists) return prev
+            
+            return [payload.new as WhatsAppConversation, ...prev]
+          })
+          
+          loadStats()
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Status da conexão Realtime:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conectado ao Supabase Realtime!')
+        }
+      })
 
+    // Cleanup: Remover canal ao desmontar componente
     return () => {
-      channel.unsubscribe()
+      console.log('🔌 Desconectando do Supabase Realtime...')
+      supabaseAdmin.removeChannel(channel)
     }
-  }, [selectedRemoteJid])
+  }, [selectedRemoteJid]) // Re-subscribe quando mudar o chat selecionado
 
   async function loadConversations() {
     try {

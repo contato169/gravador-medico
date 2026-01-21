@@ -49,6 +49,10 @@ export default function AnalyticsTracker({ city, country, region }: AnalyticsPro
       }
     }
 
+    // ⚠️ TEMPORÁRIO: Desabilitar até executar REPAIR-AND-OPTIMIZE.sql
+    console.log('⚠️ Analytics temporariamente desabilitado - execute REPAIR-AND-OPTIMIZE.sql primeiro')
+    return
+
     // Executar imediatamente
     checkConsentAndTrack()
 
@@ -67,6 +71,9 @@ export default function AnalyticsTracker({ city, country, region }: AnalyticsPro
 
   // 🔥 HEARTBEAT: Atualiza last_seen a cada 10 segundos para manter usuário "online"
   useEffect(() => {
+    // ⚠️ TEMPORÁRIO: Desabilitar até executar REPAIR-AND-OPTIMIZE.sql
+    return
+
     const consent = localStorage.getItem('cookie_consent')
     if (consent !== 'accepted') return
 

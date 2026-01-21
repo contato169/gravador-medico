@@ -597,7 +597,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-gray-400 mt-1">Últimas {recentSales.length} transações</p>
             </div>
             <button 
-              onClick={() => router.push('/admin/sales')}
+              onClick={() => router.push('/admin/sales-pro')}
               className="text-brand-400 font-semibold hover:text-brand-300 transition-colors"
             >
               Ver todas →
@@ -645,7 +645,7 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button 
-                      onClick={() => router.push(`/admin/sales`)}
+                      onClick={() => router.push(`/admin/sales-pro`)}
                       className="text-brand-400 hover:text-brand-300 font-semibold text-sm transition-colors"
                       title="Ver detalhes"
                     >

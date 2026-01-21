@@ -162,7 +162,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { 
       icon: ShoppingCart, 
       label: 'Vendas', 
-      href: '/admin/sales',
+      href: '/admin/sales-pro',
       badge: null
     },
     { 
@@ -497,7 +497,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <div
                           onClick={() => {
                             setNotificationsOpen(false)
-                            router.push('/admin/sales')
+                            router.push('/admin/sales-pro')
                           }}
                           className="p-3 bg-green-900/20 border border-green-700 rounded-lg cursor-pointer hover:bg-green-900/30 transition"
                         >
@@ -520,7 +520,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <div
                           onClick={() => {
                             setNotificationsOpen(false)
-                            router.push('/admin/sales')
+                            router.push('/admin/sales-pro')
                           }}
                           className="p-3 bg-blue-900/20 border border-blue-700 rounded-lg cursor-pointer hover:bg-blue-900/30 transition"
                         >

@@ -1,356 +1,709 @@
-'use client';"use client"
+'use client';'use client';"use client"
 
 
 
-import React, { useState, useEffect } from 'react';import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 
-import { Search, Crown, Zap, Moon, AlertTriangle, Users, TrendingUp, DollarSign } from 'lucide-react';import { motion } from 'framer-motion'
+import { Search, Crown, Zap, Moon, AlertTriangle, Users, TrendingUp, DollarSign } from 'lucide-react';
 
-import { Input } from '@/components/ui/input';import { 
+import { Input } from '@/components/ui/input';import React, { useState, useEffect } from 'react';import { useState, useEffect } from 'react'
 
-import { Badge } from '@/components/ui/badge';  Users, Search, Mail, Phone, Calendar, DollarSign, 
+import { Badge } from '@/components/ui/badge';
 
-import { Button } from '@/components/ui/button';  ShoppingBag, Filter, Download, RefreshCw, Eye, TrendingUp 
+import { Button } from '@/components/ui/button';import { Search, Crown, Zap, Moon, AlertTriangle, Users, TrendingUp, DollarSign } from 'lucide-react';import { motion } from 'framer-motion'
 
-import {} from 'lucide-react'
+import {
 
-  Table,import { supabase } from '@/lib/supabase'
+  Table,import { Input } from '@/components/ui/input';import { 
 
-  TableBody,import { format, subDays } from 'date-fns'
+  TableBody,
 
-  TableCell,import { ptBR } from 'date-fns/locale'
+  TableCell,import { Badge } from '@/components/ui/badge';  Users, Search, Mail, Phone, Calendar, DollarSign, 
+
+  TableHead,
+
+  TableHeader,import { Button } from '@/components/ui/button';  ShoppingBag, Filter, Download, RefreshCw, Eye, TrendingUp 
+
+  TableRow,
+
+} from '@/components/ui/table';import {} from 'lucide-react'
+
+import { Card } from '@/components/ui/card';
+
+import { Skeleton } from '@/components/ui/skeleton';  Table,import { supabase } from '@/lib/supabase'
+
+import CustomerDrawer from '@/components/CustomerDrawer';
+
+import { Customer } from '@/app/api/admin/customers/route';  TableBody,import { format, subDays } from 'date-fns'
+
+
+
+function useDebounce<T>(value: T, delay: number): T {  TableCell,import { ptBR } from 'date-fns/locale'
+
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
   TableHead,import { fetchCustomersWithMetrics } from '@/lib/dashboard-queries'
 
-  TableHeader,
+  useEffect(() => {
 
-  TableRow,interface Customer {
-
-} from '@/components/ui/table';  customer_id: string
-
-import { Card } from '@/components/ui/card';  name: string
-
-import { Skeleton } from '@/components/ui/skeleton';  email: string
-
-import CustomerDrawer from '@/components/CustomerDrawer';  phone: string | null
-
-import { Customer } from '@/app/api/admin/customers/route';  segment: string | null
-
-  status: string
-
-// Debounce hook  total_orders: number
-
-function useDebounce<T>(value: T, delay: number): T {  total_spent: number
-
-  const [debouncedValue, setDebouncedValue] = useState(value);  average_order_value: number
-
-  last_purchase_at: string
-
-  useEffect(() => {  first_purchase_at: string
-
-    const handler = setTimeout(() => {}
+    const handler = setTimeout(() => {  TableHeader,
 
       setDebouncedValue(value);
 
-    }, delay);export default function CustomersPage() {
+    }, delay);  TableRow,interface Customer {
 
-  const [customers, setCustomers] = useState<Customer[]>([])
 
-    return () => {  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
 
-      clearTimeout(handler);  const [loading, setLoading] = useState(true)
+    return () => {} from '@/components/ui/table';  customer_id: string
 
-    };  const [refreshing, setRefreshing] = useState(false)
+      clearTimeout(handler);
 
-  }, [value, delay]);  const [searchTerm, setSearchTerm] = useState('')
+    };import { Card } from '@/components/ui/card';  name: string
 
-  const [sortBy, setSortBy] = useState<'total_spent' | 'total_orders' | 'last_purchase_at'>('total_spent')
+  }, [value, delay]);
 
-  return debouncedValue;  const [filterSegment, setFilterSegment] = useState<'all' | 'vip' | 'regular' | 'new'>('all')
+import { Skeleton } from '@/components/ui/skeleton';  email: string
 
-}  
+  return debouncedValue;
 
-  // Filtros de data
+}import CustomerDrawer from '@/components/CustomerDrawer';  phone: string | null
 
-// Função para gerar avatar com iniciais  const today = new Date()
 
-function getInitials(name: string): string {  const thirtyDaysAgo = subDays(today, 30)
 
-  if (!name) return '??';  const [startDate, setStartDate] = useState(format(thirtyDaysAgo, 'yyyy-MM-dd'))
+function getInitials(name: string): string {import { Customer } from '@/app/api/admin/customers/route';  segment: string | null
 
-  const parts = name.trim().split(' ');  const [endDate, setEndDate] = useState(format(today, 'yyyy-MM-dd'))
+  if (!name) return '??';
 
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();  const [period, setPeriod] = useState(30)
+  const parts = name.trim().split(' ');  status: string
 
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
 
-}  // Função para definir período rápido
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();// Debounce hook  total_orders: number
 
-  const setQuickPeriod = (days: number) => {
+}
 
-// Função para gerar cor baseada em hash    setPeriod(days)
+function useDebounce<T>(value: T, delay: number): T {  total_spent: number
 
-function getColorFromString(str: string): string {    const end = new Date()
+function getColorFromString(str: string): string {
 
-  let hash = 0;    const start = subDays(end, days)
+  let hash = 0;  const [debouncedValue, setDebouncedValue] = useState(value);  average_order_value: number
 
-  for (let i = 0; i < str.length; i++) {    setStartDate(format(start, 'yyyy-MM-dd'))
+  for (let i = 0; i < str.length; i++) {
 
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);    setEndDate(format(end, 'yyyy-MM-dd'))
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);  last_purchase_at: string
 
-  }  }
+  }
 
-  const hue = hash % 360;
+  const hue = hash % 360;  useEffect(() => {  first_purchase_at: string
 
-  return `hsl(${hue}, 65%, 55%)`;  useEffect(() => {
+  return `hsl(${hue}, 65%, 55%)`;
 
-}    loadCustomers()
+}    const handler = setTimeout(() => {}
 
-  }, [startDate, endDate])
 
-// Componente de Avatar
 
-function CustomerAvatar({ name, email }: { name: string; email: string }) {  useEffect(() => {
+function CustomerAvatar({ name, email }: { name: string; email: string }) {      setDebouncedValue(value);
 
-  const initials = getInitials(name);    filterAndSortCustomers()
+  const initials = getInitials(name);
 
-  const color = getColorFromString(email);  }, [searchTerm, sortBy, filterSegment, customers])
+  const color = getColorFromString(email);    }, delay);export default function CustomersPage() {
 
   
 
-  return (  const loadCustomers = async () => {
+  return (  const [customers, setCustomers] = useState<Customer[]>([])
 
-    <div    try {
+    <div
 
-      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"      setRefreshing(true)
+      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"    return () => {  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
 
       style={{ backgroundColor: color }}
 
-    >      console.log('📊 Carregando clientes:', { startDate, endDate })
+    >      clearTimeout(handler);  const [loading, setLoading] = useState(true)
 
       {initials}
 
-    </div>      // Usar helper de queries
+    </div>    };  const [refreshing, setRefreshing] = useState(false)
 
-  );      const { data, error } = await fetchCustomersWithMetrics(
+  );
 
-}        supabase,
+}  }, [value, delay]);  const [searchTerm, setSearchTerm] = useState('')
 
-        startDate,
 
-// Badge de Segmento        endDate
 
-function SegmentBadge({ segment }: { segment: Customer['segment'] }) {      )
+function SegmentBadge({ segment }: { segment: Customer['segment'] }) {  const [sortBy, setSortBy] = useState<'total_spent' | 'total_orders' | 'last_purchase_at'>('total_spent')
 
   const config = {
 
-    VIP: { icon: Crown, color: 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white', label: '👑 VIP' },      if (error) {
+    VIP: { icon: Crown, color: 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white', label: '👑 VIP' },  return debouncedValue;  const [filterSegment, setFilterSegment] = useState<'all' | 'vip' | 'regular' | 'new'>('all')
 
-    New: { icon: Zap, color: 'bg-gradient-to-r from-green-500 to-emerald-600 text-white', label: '🔥 Novo' },        console.error('❌ Erro ao buscar clientes:', error)
+    New: { icon: Zap, color: 'bg-gradient-to-r from-green-500 to-emerald-600 text-white', label: '🔥 Novo' },
 
-    Dormant: { icon: Moon, color: 'bg-gradient-to-r from-gray-500 to-slate-600 text-white', label: '💤 Ausente' },        return
+    Dormant: { icon: Moon, color: 'bg-gradient-to-r from-gray-500 to-slate-600 text-white', label: '💤 Ausente' },}  
 
-    'Churn Risk': { icon: AlertTriangle, color: 'bg-gradient-to-r from-orange-500 to-red-600 text-white', label: '⚠️ Churn' },      }
+    'Churn Risk': { icon: AlertTriangle, color: 'bg-gradient-to-r from-orange-500 to-red-600 text-white', label: '⚠️ Churn' },
 
-    Regular: { icon: Users, color: 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white', label: 'Regular' },
-
-  };      console.log('✅ Clientes carregados:', data?.length || 0)
-
-        setCustomers(data || [])
-
-  const { color, label } = config[segment] || config.Regular;
-
-      } catch (error) {
-
-  return (      console.error('❌ Erro:', error)
-
-    <Badge className={`${color} border-0 font-semibold px-3 py-1`}>    } finally {
-
-      {label}      setLoading(false)
-
-    </Badge>      setRefreshing(false)
-
-  );    }
-
-}  }
-
-
-
-// Formatter de moeda  const filterAndSortCustomers = () => {
-
-const formatCurrency = (value: number | null) => {    let filtered = [...customers]
-
-  if (!value) return 'R$ 0,00';
-
-  return new Intl.NumberFormat('pt-BR', {    // Filtrar por busca
-
-    style: 'currency',    if (searchTerm) {
-
-    currency: 'BRL',      filtered = filtered.filter(c =>
-
-  }).format(value);        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-
-};        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-
-        c.phone?.includes(searchTerm)
-
-// Formatter de data relativa      )
-
-function getRelativeTime(date: string): string {    }
-
-  const now = new Date();
-
-  const past = new Date(date);    // Filtrar por segmento
-
-  const diffMs = now.getTime() - past.getTime();    if (filterSegment !== 'all') {
-
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));      filtered = filtered.filter(c => c.segment === filterSegment)
-
-      }
-
-  if (diffDays === 0) return 'Hoje';
-
-  if (diffDays === 1) return 'Ontem';    // Ordenar
-
-  if (diffDays < 7) return `${diffDays} dias atrás`;    filtered.sort((a, b) => {
-
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;      switch (sortBy) {
-
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`;        case 'total_spent':
-
-  return `${Math.floor(diffDays / 365)} anos atrás`;          return b.total_spent - a.total_spent
-
-}        case 'total_orders':
-
-          return b.total_orders - a.total_orders
-
-export default function CustomersPage() {        case 'last_purchase_at':
-
-  const [customers, setCustomers] = useState<Customer[]>([]);          return new Date(b.last_purchase_at).getTime() - new Date(a.last_purchase_at).getTime()
-
-  const [loading, setLoading] = useState(true);        default:
-
-  const [search, setSearch] = useState('');          return 0
-
-  const [selectedSegment, setSelectedSegment] = useState('');      }
-
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);    })
-
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const [page, setPage] = useState(1);    setFilteredCustomers(filtered)
-
-  const [totalPages, setTotalPages] = useState(1);  }
-
-  const [stats, setStats] = useState({
-
-    total_customers: 0,  // Métricas totais
-
-    vip_count: 0,  const totalCustomers = customers.length
-
-    dormant_count: 0,  const totalRevenue = customers.reduce((sum, c) => sum + c.total_spent, 0)
-
-    total_ltv: 0,  const avgOrderValue = customers.reduce((sum, c) => sum + c.average_order_value, 0) / (customers.length || 1)
-
-    avg_ltv: 0,  const totalOrders = customers.reduce((sum, c) => sum + c.total_orders, 0)
-
-  });
-
-  // Segmentos
-
-  const debouncedSearch = useDebounce(search, 500);  const vipCount = customers.filter(c => c.segment === 'vip').length
-
-  const regularCount = customers.filter(c => c.segment === 'regular').length
-
-  // Fetch customers  const newCount = customers.filter(c => c.segment === 'new').length
-
-  const fetchCustomers = async () => {
-
-    setLoading(true);  const MetricCard = ({ title, value, icon: Icon, color, prefix = '', suffix = '' }: any) => (
-
-    try {    <motion.div
-
-      const params = new URLSearchParams({      initial={{ opacity: 0, y: 20 }}
-
-        page: page.toString(),      animate={{ opacity: 1, y: 0 }}
-
-        limit: '20',      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-700/50"
-
-        search: debouncedSearch,    >
-
-        segment: selectedSegment,      <div className="flex items-center gap-4">
-
-        sortBy: 'ltv',        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center`}>
-
-        sortOrder: 'desc',          <Icon className="w-6 h-6 text-white" />
-
-      });        </div>
-
-              <div>
-
-      const response = await fetch(`/api/admin/customers?${params}`);          <p className="text-gray-400 text-sm font-medium">{title}</p>
-
-      const data = await response.json();          <p className="text-2xl font-bold text-white">
-
-                  {prefix}{typeof value === 'number' ? value.toLocaleString('pt-BR', {
-
-      setCustomers(data.customers || []);              minimumFractionDigits: prefix === 'R$ ' ? 2 : 0,
-
-      setTotalPages(data.pagination?.totalPages || 1);              maximumFractionDigits: prefix === 'R$ ' ? 2 : 0,
-
-      setStats(data.stats || stats);            }) : value}{suffix}
-
-    } catch (error) {          </p>
-
-      console.error('Error fetching customers:', error);        </div>
-
-    } finally {      </div>
-
-      setLoading(false);    </motion.div>
-
-    }  )
+    Regular: { icon: Users, color: 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white', label: 'Regular' },  // Filtros de data
 
   };
 
-  const SegmentBadge = ({ segment }: { segment: string | null }) => {
+  // Função para gerar avatar com iniciais  const today = new Date()
 
-  useEffect(() => {    const styles = {
+  const { color, label } = config[segment] || config.Regular;
 
-    fetchCustomers();      vip: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  function getInitials(name: string): string {  const thirtyDaysAgo = subDays(today, 30)
 
-  }, [debouncedSearch, selectedSegment, page]);      regular: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  return (
 
-      new: 'bg-green-500/20 text-green-400 border-green-500/30',
+    <Badge className={`${color} border-0 font-semibold px-3 py-1`}>  if (!name) return '??';  const [startDate, setStartDate] = useState(format(thirtyDaysAgo, 'yyyy-MM-dd'))
 
-  // Abrir drawer    }
+      {label}
 
-  const handleRowClick = (customer: Customer) => {
+    </Badge>  const parts = name.trim().split(' ');  const [endDate, setEndDate] = useState(format(today, 'yyyy-MM-dd'))
 
-    setSelectedCustomer(customer);    const labels = {
+  );
 
-    setDrawerOpen(true);      vip: '⭐ VIP',
+}  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();  const [period, setPeriod] = useState(30)
 
-  };      regular: '👤 Regular',
 
-      new: '🆕 Novo',
 
-  return (    }
+const formatCurrency = (value: number | null) => {  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 
-    <div className="min-h-screen bg-[#0A0A0A] p-6 space-y-6">
+  if (!value) return 'R$ 0,00';
 
-      {/* Header */}    const seg = segment || 'new'
+  return new Intl.NumberFormat('pt-BR', {}  // Função para definir período rápido
+
+    style: 'currency',
+
+    currency: 'BRL',  const setQuickPeriod = (days: number) => {
+
+  }).format(value);
+
+};// Função para gerar cor baseada em hash    setPeriod(days)
+
+
+
+function getRelativeTime(date: string): string {function getColorFromString(str: string): string {    const end = new Date()
+
+  const now = new Date();
+
+  const past = new Date(date);  let hash = 0;    const start = subDays(end, days)
+
+  const diffMs = now.getTime() - past.getTime();
+
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));  for (let i = 0; i < str.length; i++) {    setStartDate(format(start, 'yyyy-MM-dd'))
+
+  
+
+  if (diffDays === 0) return 'Hoje';    hash = str.charCodeAt(i) + ((hash << 5) - hash);    setEndDate(format(end, 'yyyy-MM-dd'))
+
+  if (diffDays === 1) return 'Ontem';
+
+  if (diffDays < 7) return `${diffDays} dias atrás`;  }  }
+
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;
+
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`;  const hue = hash % 360;
+
+  return `${Math.floor(diffDays / 365)} anos atrás`;
+
+}  return `hsl(${hue}, 65%, 55%)`;  useEffect(() => {
+
+
+
+export default function CustomersPage() {}    loadCustomers()
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  const [loading, setLoading] = useState(true);  }, [startDate, endDate])
+
+  const [search, setSearch] = useState('');
+
+  const [selectedSegment, setSelectedSegment] = useState('');// Componente de Avatar
+
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);function CustomerAvatar({ name, email }: { name: string; email: string }) {  useEffect(() => {
+
+  const [page, setPage] = useState(1);
+
+  const [totalPages, setTotalPages] = useState(1);  const initials = getInitials(name);    filterAndSortCustomers()
+
+  const [stats, setStats] = useState({
+
+    total_customers: 0,  const color = getColorFromString(email);  }, [searchTerm, sortBy, filterSegment, customers])
+
+    vip_count: 0,
+
+    dormant_count: 0,  
+
+    total_ltv: 0,
+
+    avg_ltv: 0,  return (  const loadCustomers = async () => {
+
+  });
+
+    <div    try {
+
+  const debouncedSearch = useDebounce(search, 500);
+
+      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"      setRefreshing(true)
+
+  const fetchCustomers = async () => {
+
+    setLoading(true);      style={{ backgroundColor: color }}
+
+    try {
+
+      const params = new URLSearchParams({    >      console.log('📊 Carregando clientes:', { startDate, endDate })
+
+        page: page.toString(),
+
+        limit: '20',      {initials}
+
+        search: debouncedSearch,
+
+        segment: selectedSegment,    </div>      // Usar helper de queries
+
+        sortBy: 'ltv',
+
+        sortOrder: 'desc',  );      const { data, error } = await fetchCustomersWithMetrics(
+
+      });
+
+      }        supabase,
+
+      const response = await fetch(`/api/admin/customers?${params}`);
+
+      const data = await response.json();        startDate,
+
+      
+
+      setCustomers(data.customers || []);// Badge de Segmento        endDate
+
+      setTotalPages(data.pagination?.totalPages || 1);
+
+      setStats(data.stats || stats);function SegmentBadge({ segment }: { segment: Customer['segment'] }) {      )
+
+    } catch (error) {
+
+      console.error('Error fetching customers:', error);  const config = {
+
+    } finally {
+
+      setLoading(false);    VIP: { icon: Crown, color: 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white', label: '👑 VIP' },      if (error) {
+
+    }
+
+  };    New: { icon: Zap, color: 'bg-gradient-to-r from-green-500 to-emerald-600 text-white', label: '🔥 Novo' },        console.error('❌ Erro ao buscar clientes:', error)
+
+
+
+  useEffect(() => {    Dormant: { icon: Moon, color: 'bg-gradient-to-r from-gray-500 to-slate-600 text-white', label: '💤 Ausente' },        return
+
+    fetchCustomers();
+
+  }, [debouncedSearch, selectedSegment, page]);    'Churn Risk': { icon: AlertTriangle, color: 'bg-gradient-to-r from-orange-500 to-red-600 text-white', label: '⚠️ Churn' },      }
+
+
+
+  const handleRowClick = (customer: Customer) => {    Regular: { icon: Users, color: 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white', label: 'Regular' },
+
+    setSelectedCustomer(customer);
+
+    setDrawerOpen(true);  };      console.log('✅ Clientes carregados:', data?.length || 0)
+
+  };
+
+        setCustomers(data || [])
+
+  return (
+
+    <div className="min-h-screen bg-[#0A0A0A] p-6 space-y-6">  const { color, label } = config[segment] || config.Regular;
+
+      <div className="flex items-center justify-between">
+
+        <div>      } catch (error) {
+
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+
+            <Users className="w-8 h-8 text-purple-400" />  return (      console.error('❌ Erro:', error)
+
+            Clientes
+
+          </h1>    <Badge className={`${color} border-0 font-semibold px-3 py-1`}>    } finally {
+
+          <p className="text-gray-400 mt-1">
+
+            Mini-CRM: Identifique VIPs, recupere Churns e acompanhe LTV      {label}      setLoading(false)
+
+          </p>
+
+        </div>    </Badge>      setRefreshing(false)
+
+      </div>
+
+  );    }
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+        <Card className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border-purple-700/30 p-6">}  }
+
+          <div className="flex items-center justify-between">
+
+            <div>
+
+              <p className="text-gray-400 text-sm font-medium">Total de Clientes</p>
+
+              <p className="text-3xl font-bold text-white mt-1">{stats.total_customers}</p>// Formatter de moeda  const filterAndSortCustomers = () => {
+
+            </div>
+
+            <Users className="w-10 h-10 text-purple-400" />const formatCurrency = (value: number | null) => {    let filtered = [...customers]
+
+          </div>
+
+        </Card>  if (!value) return 'R$ 0,00';
+
+
+
+        <Card className="bg-gradient-to-br from-yellow-900/30 to-amber-800/20 border-yellow-700/30 p-6">  return new Intl.NumberFormat('pt-BR', {    // Filtrar por busca
+
+          <div className="flex items-center justify-between">
+
+            <div>    style: 'currency',    if (searchTerm) {
+
+              <p className="text-gray-400 text-sm font-medium">VIPs</p>
+
+              <p className="text-3xl font-bold text-white mt-1">{stats.vip_count}</p>    currency: 'BRL',      filtered = filtered.filter(c =>
+
+            </div>
+
+            <Crown className="w-10 h-10 text-yellow-400" />  }).format(value);        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+
+          </div>
+
+        </Card>};        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+
+
+
+        <Card className="bg-gradient-to-br from-green-900/30 to-emerald-800/20 border-green-700/30 p-6">        c.phone?.includes(searchTerm)
+
+          <div className="flex items-center justify-between">
+
+            <div>// Formatter de data relativa      )
+
+              <p className="text-gray-400 text-sm font-medium">LTV Total</p>
+
+              <p className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.total_ltv)}</p>function getRelativeTime(date: string): string {    }
+
+            </div>
+
+            <DollarSign className="w-10 h-10 text-green-400" />  const now = new Date();
+
+          </div>
+
+        </Card>  const past = new Date(date);    // Filtrar por segmento
+
+
+
+        <Card className="bg-gradient-to-br from-blue-900/30 to-indigo-800/20 border-blue-700/30 p-6">  const diffMs = now.getTime() - past.getTime();    if (filterSegment !== 'all') {
+
+          <div className="flex items-center justify-between">
+
+            <div>  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));      filtered = filtered.filter(c => c.segment === filterSegment)
+
+              <p className="text-gray-400 text-sm font-medium">LTV Médio</p>
+
+              <p className="text-2xl font-bold text-white mt-1">{formatCurrency(stats.avg_ltv)}</p>      }
+
+            </div>
+
+            <TrendingUp className="w-10 h-10 text-blue-400" />  if (diffDays === 0) return 'Hoje';
+
+          </div>
+
+        </Card>  if (diffDays === 1) return 'Ontem';    // Ordenar
+
+      </div>
+
+  if (diffDays < 7) return `${diffDays} dias atrás`;    filtered.sort((a, b) => {
+
+      <Card className="bg-[#111111] border-gray-800 p-6">
+
+        <div className="flex flex-col md:flex-row gap-4">  if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`;      switch (sortBy) {
+
+          <div className="flex-1 relative">
+
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />  if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`;        case 'total_spent':
+
+            <Input
+
+              placeholder="Buscar por nome ou email..."  return `${Math.floor(diffDays / 365)} anos atrás`;          return b.total_spent - a.total_spent
+
+              value={search}
+
+              onChange={(e) => setSearch(e.target.value)}}        case 'total_orders':
+
+              className="pl-10 bg-[#1A1A1A] border-gray-700 text-white placeholder:text-gray-500"
+
+            />          return b.total_orders - a.total_orders
+
+          </div>
+
+export default function CustomersPage() {        case 'last_purchase_at':
+
+          <div className="flex gap-2 flex-wrap">
+
+            {['', 'VIP', 'New', 'Dormant', 'Churn Risk', 'Regular'].map((segment) => (  const [customers, setCustomers] = useState<Customer[]>([]);          return new Date(b.last_purchase_at).getTime() - new Date(a.last_purchase_at).getTime()
+
+              <Button
+
+                key={segment || 'all'}  const [loading, setLoading] = useState(true);        default:
+
+                variant={selectedSegment === segment ? 'default' : 'outline'}
+
+                onClick={() => setSelectedSegment(segment)}  const [search, setSearch] = useState('');          return 0
+
+                className={`${
+
+                  selectedSegment === segment  const [selectedSegment, setSelectedSegment] = useState('');      }
+
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+
+                    : 'bg-[#1A1A1A] border-gray-700 text-gray-300 hover:bg-[#222222]'  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);    })
+
+                }`}
+
+              >  const [drawerOpen, setDrawerOpen] = useState(false);
+
+                {segment || 'Todos'}
+
+              </Button>  const [page, setPage] = useState(1);    setFilteredCustomers(filtered)
+
+            ))}
+
+          </div>  const [totalPages, setTotalPages] = useState(1);  }
+
+        </div>
+
+      </Card>  const [stats, setStats] = useState({
+
+
+
+      <Card className="bg-[#111111] border-gray-800">    total_customers: 0,  // Métricas totais
+
+        <Table>
+
+          <TableHeader>    vip_count: 0,  const totalCustomers = customers.length
+
+            <TableRow className="border-gray-800 hover:bg-transparent">
+
+              <TableHead className="text-gray-400 font-semibold">Cliente</TableHead>    dormant_count: 0,  const totalRevenue = customers.reduce((sum, c) => sum + c.total_spent, 0)
+
+              <TableHead className="text-gray-400 font-semibold">Segmento</TableHead>
+
+              <TableHead className="text-gray-400 font-semibold text-right">LTV</TableHead>    total_ltv: 0,  const avgOrderValue = customers.reduce((sum, c) => sum + c.average_order_value, 0) / (customers.length || 1)
+
+              <TableHead className="text-gray-400 font-semibold text-right">Pedidos</TableHead>
+
+              <TableHead className="text-gray-400 font-semibold text-right">Ticket Médio</TableHead>    avg_ltv: 0,  const totalOrders = customers.reduce((sum, c) => sum + c.total_orders, 0)
+
+              <TableHead className="text-gray-400 font-semibold">Última Compra</TableHead>
+
+              <TableHead className="text-gray-400 font-semibold text-center">Score</TableHead>  });
+
+            </TableRow>
+
+          </TableHeader>  // Segmentos
+
+          <TableBody>
+
+            {loading ? (  const debouncedSearch = useDebounce(search, 500);  const vipCount = customers.filter(c => c.segment === 'vip').length
+
+              Array.from({ length: 5 }).map((_, i) => (
+
+                <TableRow key={i} className="border-gray-800">  const regularCount = customers.filter(c => c.segment === 'regular').length
+
+                  <TableCell colSpan={7}>
+
+                    <Skeleton className="h-12 w-full bg-gray-800" />  // Fetch customers  const newCount = customers.filter(c => c.segment === 'new').length
+
+                  </TableCell>
+
+                </TableRow>  const fetchCustomers = async () => {
+
+              ))
+
+            ) : customers.length === 0 ? (    setLoading(true);  const MetricCard = ({ title, value, icon: Icon, color, prefix = '', suffix = '' }: any) => (
+
+              <TableRow className="border-gray-800">
+
+                <TableCell colSpan={7} className="text-center text-gray-500 py-12">    try {    <motion.div
+
+                  Nenhum cliente encontrado
+
+                </TableCell>      const params = new URLSearchParams({      initial={{ opacity: 0, y: 20 }}
+
+              </TableRow>
+
+            ) : (        page: page.toString(),      animate={{ opacity: 1, y: 0 }}
+
+              customers.map((customer) => (
+
+                <TableRow        limit: '20',      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-gray-700/50"
+
+                  key={customer.email}
+
+                  onClick={() => handleRowClick(customer)}        search: debouncedSearch,    >
+
+                  className="border-gray-800 hover:bg-[#1A1A1A] cursor-pointer transition-colors"
+
+                >        segment: selectedSegment,      <div className="flex items-center gap-4">
+
+                  <TableCell>
+
+                    <div className="flex items-center gap-3">        sortBy: 'ltv',        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center`}>
+
+                      <CustomerAvatar name={customer.name} email={customer.email} />
+
+                      <div>        sortOrder: 'desc',          <Icon className="w-6 h-6 text-white" />
+
+                        <p className="font-medium text-white">{customer.name || 'Sem nome'}</p>
+
+                        <p className="text-sm text-gray-500">{customer.email}</p>      });        </div>
+
+                      </div>
+
+                    </div>              <div>
+
+                  </TableCell>
+
+                  <TableCell>      const response = await fetch(`/api/admin/customers?${params}`);          <p className="text-gray-400 text-sm font-medium">{title}</p>
+
+                    <SegmentBadge segment={customer.segment} />
+
+                  </TableCell>      const data = await response.json();          <p className="text-2xl font-bold text-white">
+
+                  <TableCell className="text-right">
+
+                    <span className="font-bold text-green-400">{formatCurrency(customer.ltv)}</span>                  {prefix}{typeof value === 'number' ? value.toLocaleString('pt-BR', {
+
+                  </TableCell>
+
+                  <TableCell className="text-right text-white">      setCustomers(data.customers || []);              minimumFractionDigits: prefix === 'R$ ' ? 2 : 0,
+
+                    {customer.paid_orders}/{customer.total_orders}
+
+                  </TableCell>      setTotalPages(data.pagination?.totalPages || 1);              maximumFractionDigits: prefix === 'R$ ' ? 2 : 0,
+
+                  <TableCell className="text-right text-gray-300">
+
+                    {formatCurrency(customer.aov)}      setStats(data.stats || stats);            }) : value}{suffix}
+
+                  </TableCell>
+
+                  <TableCell>    } catch (error) {          </p>
+
+                    <span className="text-gray-400 text-sm">
+
+                      {customer.last_purchase ? getRelativeTime(customer.last_purchase) : 'Nunca'}      console.error('Error fetching customers:', error);        </div>
+
+                    </span>
+
+                  </TableCell>    } finally {      </div>
+
+                  <TableCell className="text-center">
+
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600">      setLoading(false);    </motion.div>
+
+                      <span className="text-white font-bold text-sm">{customer.engagement_score}</span>
+
+                    </div>    }  )
+
+                  </TableCell>
+
+                </TableRow>  };
+
+              ))
+
+            )}  const SegmentBadge = ({ segment }: { segment: string | null }) => {
+
+          </TableBody>
+
+        </Table>  useEffect(() => {    const styles = {
+
+
+
+        {totalPages > 1 && (    fetchCustomers();      vip: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+
+          <div className="flex items-center justify-between p-4 border-t border-gray-800">
+
+            <Button  }, [debouncedSearch, selectedSegment, page]);      regular: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+
+              variant="outline"
+
+              onClick={() => setPage(Math.max(1, page - 1))}      new: 'bg-green-500/20 text-green-400 border-green-500/30',
+
+              disabled={page === 1}
+
+              className="bg-[#1A1A1A] border-gray-700 text-white hover:bg-[#222222] disabled:opacity-50"  // Abrir drawer    }
+
+            >
+
+              Anterior  const handleRowClick = (customer: Customer) => {
+
+            </Button>
+
+            <span className="text-gray-400">    setSelectedCustomer(customer);    const labels = {
+
+              Página {page} de {totalPages}
+
+            </span>    setDrawerOpen(true);      vip: '⭐ VIP',
+
+            <Button
+
+              variant="outline"  };      regular: '👤 Regular',
+
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+
+              disabled={page === totalPages}      new: '🆕 Novo',
+
+              className="bg-[#1A1A1A] border-gray-700 text-white hover:bg-[#222222] disabled:opacity-50"
+
+            >  return (    }
+
+              Próxima
+
+            </Button>    <div className="min-h-screen bg-[#0A0A0A] p-6 space-y-6">
+
+          </div>
+
+        )}      {/* Header */}    const seg = segment || 'new'
+
+      </Card>
 
       <div className="flex items-center justify-between">    return (
 
-        <div>      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${styles[seg as keyof typeof styles]}`}>
+      {selectedCustomer && (
 
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">        {labels[seg as keyof typeof labels]}
+        <CustomerDrawer        <div>      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${styles[seg as keyof typeof styles]}`}>
 
-            <Users className="w-8 h-8 text-purple-400" />      </span>
+          customer={selectedCustomer}
 
-            Clientes    )
+          open={drawerOpen}          <h1 className="text-3xl font-bold text-white flex items-center gap-3">        {labels[seg as keyof typeof labels]}
 
-          </h1>  }
+          onClose={() => setDrawerOpen(false)}
+
+        />            <Users className="w-8 h-8 text-purple-400" />      </span>
+
+      )}
+
+    </div>            Clientes    )
+
+  );
+
+}          </h1>  }
+
 
           <p className="text-gray-400 mt-1">
 

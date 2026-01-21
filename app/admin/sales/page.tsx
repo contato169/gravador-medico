@@ -15,10 +15,10 @@ import {
   Package,
   X
 } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { formatMoney } from '@/lib/format'
+import { fetchSalesWithFallback, formatCurrency } from '@/lib/salesUtils'
 
 interface Sale {
   id: string
@@ -71,7 +71,7 @@ export default function SalesPage() {
     loadSales()
     
     // 🔴 REALTIME: Escutar novas vendas
-    const channel = supabaseAdmin
+    const channel = supabase
       .channel('sales-realtime')
       .on(
         'postgres_changes',
@@ -88,7 +88,7 @@ export default function SalesPage() {
       .subscribe()
 
     return () => {
-      supabaseAdmin.removeChannel(channel)
+      supabase.removeChannel(channel)
     }
   }, [])
 
@@ -103,42 +103,14 @@ export default function SalesPage() {
     try {
       setRefreshing(true)
       
-      // ✅ CORREÇÃO: Garantir dia completo em UTC (evita problema de timezone)
-      const start = new Date(startDate)
-      const end = new Date(endDate)
+      // ✅ Usar utility centralizado com fallback automático
+      const { data, usedFallback } = await fetchSalesWithFallback(startDate, endDate)
       
-      // Forçar início do dia em UTC (00:00:00.000)
-      const startIso = new Date(Date.UTC(
-        start.getFullYear(), 
-        start.getMonth(), 
-        start.getDate(), 
-        0, 0, 0, 0
-      )).toISOString()
-      
-      // Forçar fim do dia em UTC (23:59:59.999)
-      const endIso = new Date(Date.UTC(
-        end.getFullYear(), 
-        end.getMonth(), 
-        end.getDate(), 
-        23, 59, 59, 999
-      )).toISOString()
-      
-      console.log('🔍 Filtro UTC:', { startIso, endIso })
-      
-      // ✅ USAR supabaseAdmin para ignorar RLS
-      const { data, error } = await supabaseAdmin
-        .from('sales')
-        .select('*')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Erro ao carregar vendas:', error)
-      } else {
-        console.log('✅ Vendas carregadas:', data?.length)
-        setSales(data || [])
+      if (usedFallback) {
+        console.warn('⚠️ Sales page usando fallback (mostrando todas as vendas)')
       }
+
+      setSales(data || [])
     } catch (error) {
       console.error('Erro:', error)
     } finally {
@@ -565,9 +537,9 @@ export default function SalesPage() {
                 <div className="space-y-2">
                   <p className="text-white"><strong>Método:</strong> {selectedSale.payment_method?.toUpperCase()}</p>
                   <p className="text-white flex items-center gap-2"><strong>Status:</strong> <StatusBadge status={selectedSale.status} /></p>
-                  <p className="text-white"><strong>Valor:</strong> R$ {formatMoney(selectedSale.total_amount)}</p>
+                  <p className="text-white"><strong>Valor:</strong> R$ {selectedSale.total_amount?.toFixed(2)}</p>
                   {selectedSale.discount_amount && selectedSale.discount_amount > 0 && (
-                    <p className="text-white"><strong>Desconto:</strong> R$ {formatMoney(selectedSale.discount_amount)}</p>
+                    <p className="text-white"><strong>Desconto:</strong> R$ {selectedSale.discount_amount?.toFixed(2)}</p>
                   )}
                 </div>
               </div>

@@ -66,46 +66,22 @@ export async function fetchCustomersWithMetrics(
   try {
     const { startIso, endIso } = createDateRange(startDate, endDate)
     
-    // ✅ CORREÇÃO: Buscar diretamente da tabela customers + sales
+    // Opção 1: Usar a view (mais rápido)
     const { data: customers, error } = await supabase
-      .from('customers')
-      .select(`
-        *,
-        sales:sales!customer_id (
-          id,
-          total_amount,
-          status,
-          created_at
-        )
-      `)
+      .from('customer_sales_summary')
+      .select('*')
+      .order('total_spent', { ascending: false })
     
-    if (error) {
-      console.error('Erro ao buscar clientes:', error)
-      // Fallback: buscar só customers sem métricas
-      const { data: fallback } = await supabase
-        .from('customers')
-        .select('*')
-      return { data: fallback || [], error }
-    }
+    if (error) throw error
     
-    // Calcular métricas manualmente
-    const customersWithMetrics = customers?.map(customer => {
-      const sales = customer.sales || []
-      const totalOrders = sales.length
-      const totalSpent = sales.reduce((sum: number, sale: any) => sum + (sale.total_amount || 0), 0)
-      const lastPurchase = sales.length > 0 
-        ? new Date(Math.max(...sales.map((s: any) => new Date(s.created_at).getTime())))
-        : null
-      
-      return {
-        ...customer,
-        total_orders: totalOrders,
-        total_spent: totalSpent,
-        last_purchase: lastPurchase
-      }
+    // Filtrar por período (se a view não suportar)
+    const filtered = customers?.filter(customer => {
+      if (!customer.last_purchase_at) return false
+      const lastPurchase = new Date(customer.last_purchase_at)
+      return lastPurchase >= new Date(startIso) && lastPurchase <= new Date(endIso)
     })
     
-    return { data: customersWithMetrics || [], error: null }
+    return { data: filtered || [], error: null }
     
   } catch (error) {
     console.error('❌ Erro ao buscar clientes:', error)

@@ -12,10 +12,9 @@ import {
   TrendingUp,
   Filter,
 } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { formatMoney, formatPercent } from '@/lib/format'
 import {
   LineChart,
   Line,
@@ -88,7 +87,7 @@ export default function ReportsPage() {
       })
 
       // Buscar vendas do período (SEM sales_items por enquanto)
-      const { data: sales, error } = await supabaseAdmin
+      const { data: sales, error } = await supabase
         .from('sales')
         .select('*')
         .gte('created_at', start.toISOString())
@@ -188,11 +187,11 @@ Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}
 RESUMO EXECUTIVO
 ============================================
 
-Faturamento Total: R$ ${formatMoney(data.totalRevenue)}
+Faturamento Total: R$ ${data.totalRevenue.toFixed(2)}
 Total de Pedidos: ${data.totalOrders}
 Clientes Únicos: ${data.totalCustomers}
-Ticket Médio: R$ ${formatMoney(data.averageTicket)}
-Taxa de Conversão: ${formatPercent(data.conversionRate)}%
+Ticket Médio: R$ ${data.averageTicket.toFixed(2)}
+Taxa de Conversão: ${data.conversionRate.toFixed(2)}%
 
 ============================================
 TOP 5 PRODUTOS
@@ -202,7 +201,7 @@ ${data.topProducts
   .map(
     (p, i) =>
       `${i + 1}. ${p.name}
-   Receita: R$ ${formatMoney(p.revenue)}
+   Receita: R$ ${p.revenue.toFixed(2)}
    Unidades: ${p.quantity}`
   )
   .join('\n\n')}
@@ -212,7 +211,7 @@ RECEITA DIÁRIA
 ============================================
 
 ${data.dailyRevenue
-  .map((d) => `${d.date}: R$ ${formatMoney(d.revenue)} (${d.orders} pedidos)`)
+  .map((d) => `${d.date}: R$ ${d.revenue.toFixed(2)} (${d.orders} pedidos)`)
   .join('\n')}
 
 ---
@@ -386,7 +385,7 @@ Relatório gerado automaticamente pelo Gravador Médico
         >
           <TrendingUp className="w-8 h-8 text-green-400 mb-3" />
           <h3 className="text-gray-400 text-sm font-semibold mb-1">Conversão</h3>
-          <p className="text-2xl font-black text-white">{formatPercent(data.conversionRate)}%</p>
+          <p className="text-2xl font-black text-white">{data.conversionRate.toFixed(1)}%</p>
         </motion.div>
       </div>
 
@@ -457,7 +456,7 @@ Relatório gerado automaticamente pelo Gravador Médico
                   R$ {product.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <div className="text-sm text-gray-400">
-                  {formatPercent((product.revenue / data.totalRevenue) * 100)}% do total
+                  {((product.revenue / data.totalRevenue) * 100).toFixed(1)}% do total
                 </div>
               </div>
             </div>

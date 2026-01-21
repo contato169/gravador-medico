@@ -17,10 +17,10 @@ import {
   RefreshCw,
   Calendar,
 } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { formatMoney, formatPercent } from '@/lib/format'
+import { fetchSalesWithFallback, calculateSalesMetrics, calculateGrowth, formatCurrency, formatPercentage } from '@/lib/salesUtils'
 import {
   AreaChart,
   Area,
@@ -103,124 +103,54 @@ export default function AdminDashboard() {
     try {
       setRefreshing(true)
       
-      // ✅ CORREÇÃO: Usar strings UTC explícitas em vez de Date objects
-      const startIso = `${startDate}T00:00:00.000Z`
-      const endIso = `${endDate}T23:59:59.999Z`
+      // ✅ Usar utility centralizado com fallback automático
+      const { data: currentSales, usedFallback } = await fetchSalesWithFallback(startDate, endDate)
+      
+      if (usedFallback) {
+        console.warn('⚠️ Dashboard usando fallback (mostrando todas as vendas)')
+      }
       
       // Calcular período anterior para comparação
-      const startDateObj = new Date(startIso)
-      const endDateObj = new Date(endIso)
+      const startDateObj = new Date(startDate)
+      const endDateObj = new Date(endDate)
       const periodDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24))
       const previousStartDate = new Date(startDateObj.getTime() - periodDays * 24 * 60 * 60 * 1000)
-      const previousStartIso = previousStartDate.toISOString()
+      const previousStartDateStr = format(previousStartDate, 'yyyy-MM-dd')
       
-      console.log('📅 Dashboard - Período:', {
-        start: startIso,
-        end: endIso,
-        days: periodDays
-      })
-      
-      // TESTE: Buscar TODAS as vendas (sem filtro de data)
-      const { data: allSales, error: testError } = await supabaseAdmin
-        .from('sales')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10)
-      
-      console.log('🔍 TESTE - Total de vendas na tabela (últimas 10):', allSales?.length || 0)
-      console.log('🔍 TESTE - Vendas:', allSales)
-      
-      // 1. Buscar vendas do período atual
-      const { data: currentSales, error: currentError} = await supabaseAdmin
-        .from('sales')
-        .select('*')
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
-        .order('created_at', { ascending: false })
+      // Buscar vendas do período anterior
+      const { data: previousSales } = await fetchSalesWithFallback(previousStartDateStr, startDate)
 
-      console.log('📊 Dashboard - Vendas encontradas:', currentSales?.length || 0)
-      console.log('📦 Dashboard - Exemplo de venda:', currentSales?.[0])
-      console.log('📦 Dashboard - Status das vendas:', currentSales?.map(s => s.status))
+      // ✅ Usar utility para calcular métricas
+      const currentMetrics = calculateSalesMetrics(currentSales)
+      const previousMetrics = calculateSalesMetrics(previousSales)
 
-      // ✅ FALLBACK: Se filtro falhar ou retornar vazio, buscar sem filtro
-      let effectiveSales = currentSales || []
-      
-      if (currentError || effectiveSales.length === 0) {
-        console.warn('⚠️ Filtro falhou ou retornou vazio, buscando sem filtro de data')
-        const { data: fallbackSales } = await supabaseAdmin
-          .from('sales')
-          .select('*')
-          .order('created_at', { ascending: false })
-        
-        if (fallbackSales) {
-          effectiveSales = fallbackSales
-          console.log('✅ Usando todas as vendas (fallback):', fallbackSales.length)
-        }
-      }
+      // ✅ Calcular crescimentos com utility
+      const revenueGrowth = calculateGrowth(currentMetrics.totalRevenue, previousMetrics.totalRevenue)
+      const ordersGrowth = calculateGrowth(currentMetrics.totalOrders, previousMetrics.totalOrders)
 
-      if (currentError && effectiveSales.length === 0) {
-        console.error('❌ Erro ao buscar vendas:', currentError)
-        setLoading(false)
-        setRefreshing(false)
-        return
-      }
-
-      // 2. Buscar vendas do período anterior (para comparação)
-      const { data: previousSales } = await supabaseAdmin
-        .from('sales')
-        .select('*')
-        .gte('created_at', previousStartIso)
-        .lt('created_at', startIso)
-
-      // ✅ CORRIGIDO: Aceitar múltiplos status (approved, paid, completed)
-      const approvedSales = (effectiveSales || []).filter(s => 
-        s.status === 'approved' || s.status === 'paid' || s.status === 'completed'
-      )
-      const totalRevenue = approvedSales.reduce((sum, s) => sum + Number(s.total_amount || 0), 0)
-      const totalOrders = approvedSales.length
-      const uniqueEmails = new Set(approvedSales.map(s => s.customer_email))
-      const totalCustomers = uniqueEmails.size
-      const averageTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0
-
-      // 4. Calcular métricas do período anterior
-      const previousApprovedSales = (previousSales || []).filter(s => 
-        s.status === 'approved' || s.status === 'paid' || s.status === 'completed'
-      )
-      const previousRevenue = previousApprovedSales.reduce((sum, s) => sum + Number(s.total_amount || 0), 0)
-      const previousOrders = previousApprovedSales.length
-
-      // 5. Calcular crescimentos
-      const revenueGrowth = previousRevenue > 0 
-        ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 
-        : totalRevenue > 0 ? 100 : 0
-      
-      const ordersGrowth = previousOrders > 0 
-        ? ((totalOrders - previousOrders) / previousOrders) * 100 
-        : totalOrders > 0 ? 100 : 0
-
-      // Taxa de conversão (aproximada - vendas aprovadas / total de vendas)
-      const totalAttempts = (currentSales || []).length
+      // Taxa de conversão (vendas aprovadas / total de vendas)
+      const totalAttempts = currentSales.length
       const conversionRate = totalAttempts > 0 
-        ? (totalOrders / totalAttempts) * 100 
+        ? (currentMetrics.totalOrders / totalAttempts) * 100 
         : 0
 
       setMetrics({
-        totalRevenue,
-        totalOrders,
-        totalCustomers,
-        averageTicket,
+        totalRevenue: currentMetrics.totalRevenue,
+        totalOrders: currentMetrics.totalOrders,
+        totalCustomers: currentMetrics.totalCustomers,
+        averageTicket: currentMetrics.averageTicket,
         revenueGrowth,
         ordersGrowth,
         conversionRate,
       })
 
-      // 6. Preparar dados para gráfico (últimos N dias do período filtrado)
+      // Preparar dados para gráfico
       const chartData = []
       for (let i = period - 1; i >= 0; i--) {
         const date = subDays(endOfDay(new Date()), i)
         const dateStr = format(date, 'dd/MM')
         
-        const daySales = approvedSales.filter(s => {
+        const daySales = currentMetrics.approvedSales.filter(s => {
           const saleDate = new Date(s.created_at)
           return format(saleDate, 'dd/MM') === dateStr
         })
@@ -235,9 +165,7 @@ export default function AdminDashboard() {
       }
       
       setSalesChart(chartData)
-
-      // 7. Vendas recentes (últimas 10)
-      setRecentSales((effectiveSales || []).slice(0, 10))
+      setRecentSales(currentSales.slice(0, 10))
 
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error)
@@ -269,7 +197,7 @@ export default function AdminDashboard() {
           change >= 0 ? 'text-green-400' : 'text-red-400'
         }`}>
           {change >= 0 ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
-          {formatPercent(Math.abs(change))}%
+          {Math.abs(change).toFixed(1)}%
         </div>
       </div>
       <h3 className="text-gray-400 text-sm font-semibold mb-1">{title}</h3>
@@ -454,7 +382,7 @@ export default function AdminDashboard() {
                   boxShadow: '0 4px 6px -1px rgba(0,0,0,0.3)',
                   color: '#fff'
                 }}
-                formatter={(value: any) => `R$ ${formatMoney(value)}`}
+                formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`}
               />
               <Area 
                 type="monotone" 
@@ -544,7 +472,7 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-bold text-green-400">
-                      R$ {formatMoney(sale.total_amount)}
+                      R$ {Number(sale.total_amount).toFixed(2)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

@@ -6,11 +6,10 @@ import {
   Users, Search, Mail, Phone, Calendar, DollarSign, 
   ShoppingBag, Filter, Download, RefreshCw, Eye, TrendingUp 
 } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { format, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { fetchCustomersWithMetrics } from '@/lib/dashboard-queries'
-import { formatMoney } from '@/lib/format'
 
 interface Customer {
   customer_id: string
@@ -67,7 +66,7 @@ export default function CustomersPage() {
 
       // Usar helper de queries
       const { data, error } = await fetchCustomersWithMetrics(
-        supabaseAdmin,
+        supabase,
         startDate,
         endDate
       )
@@ -341,7 +340,7 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-bold text-green-400">
-                      R$ {formatMoney(customer.total_spent)}
+                      R$ {customer.total_spent.toFixed(2)}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -352,7 +351,7 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-gray-300">
-                      R$ {formatMoney(customer.average_order_value)}
+                      R$ {customer.average_order_value.toFixed(2)}
                     </div>
                   </td>
                   <td className="px-6 py-4">

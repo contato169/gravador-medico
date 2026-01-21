@@ -99,7 +99,13 @@ function LoginForm() {
           transition={{ delay: 0.1 }}
           className="bg-gray-800/50 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-gray-700/50"
         >
-          <form onSubmit={handleLogin} className="space-y-6" autoComplete="on">
+          <form 
+            onSubmit={handleLogin} 
+            className="space-y-6" 
+            autoComplete="on"
+            method="post"
+            action="/api/auth/login"
+          >
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-200 mb-2">

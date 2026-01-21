@@ -146,27 +146,27 @@ export default function WhatsAppInboxPage() {
       sidebar={
         <>
           {/* Header da sidebar */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="p-4 border-b border-gray-700 bg-gray-800">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <MessageSquare className="w-6 h-6" />
                 WhatsApp Inbox
               </h2>
               <button
                 onClick={loadConversations}
-                className="p-2 hover:bg-gray-200 rounded-full transition"
+                className="p-2 hover:bg-gray-700 rounded-full transition"
                 title="Atualizar"
               >
-                <RefreshCw className="w-5 h-5 text-gray-600" />
+                <RefreshCw className="w-5 h-5 text-gray-300" />
               </button>
             </div>
 
             {/* Stats */}
-            <div className="flex gap-4 text-xs text-gray-600 mb-3">
+            <div className="flex gap-4 text-xs text-gray-400 mb-3">
               <span>📞 {stats.totalContacts} conversas</span>
               <span>💬 {stats.totalMessages} msgs</span>
               {stats.totalUnread > 0 && (
-                <span className="font-bold text-green-600">
+                <span className="font-bold text-green-400">
                   🔔 {stats.totalUnread} não lidas
                 </span>
               )}
@@ -174,20 +174,20 @@ export default function WhatsAppInboxPage() {
 
             {/* Busca */}
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
               <input
                 type="text"
                 placeholder="Buscar conversa..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400"
               />
             </div>
           </div>
 
           {/* Lista de conversas */}
           {loading ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-400">
               <p>Carregando...</p>
             </div>
           ) : (
@@ -203,7 +203,7 @@ export default function WhatsAppInboxPage() {
       {selectedConversation ? (
         <>
           {/* Header do chat */}
-          <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
+          <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
             <div className="flex items-center gap-3">
               {selectedConversation.profile_picture_url ? (
                 <img
@@ -212,17 +212,17 @@ export default function WhatsAppInboxPage() {
                   className="w-10 h-10 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold">
                   {(selectedConversation.name?.[0] || '?').toUpperCase()}
                 </div>
               )}
               <div>
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-semibold text-white">
                   {selectedConversation.name ||
                     selectedConversation.push_name ||
                     selectedConversation.remote_jid}
                 </h3>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {selectedConversation.total_messages} mensagens
                 </p>
               </div>
@@ -231,17 +231,17 @@ export default function WhatsAppInboxPage() {
 
           {/* Área de mensagens */}
           <div
-            className="flex-1 overflow-y-auto p-6 bg-gray-50"
+            className="flex-1 overflow-y-auto p-6 bg-gray-900"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d5db' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23374151' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
             }}
           >
             {loadingMessages ? (
-              <div className="text-center text-gray-500">
+              <div className="text-center text-gray-400">
                 <p>Carregando mensagens...</p>
               </div>
             ) : messages.length === 0 ? (
-              <div className="text-center text-gray-500">
+              <div className="text-center text-gray-400">
                 <p>Nenhuma mensagem ainda</p>
               </div>
             ) : (
@@ -255,13 +255,13 @@ export default function WhatsAppInboxPage() {
           </div>
 
           {/* Input de mensagem (placeholder - não implementado envio) */}
-          <div className="bg-gray-50 border-t border-gray-200 p-4">
+          <div className="bg-gray-800 border-t border-gray-700 p-4">
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 placeholder="Digite uma mensagem (envio não implementado)"
                 disabled
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:text-gray-400"
+                className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 text-white rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-700 disabled:text-gray-500 placeholder-gray-500"
               />
               <button
                 disabled
@@ -270,17 +270,17 @@ export default function WhatsAppInboxPage() {
                 <Send className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-2 text-center">
+            <p className="text-xs text-gray-500 mt-2 text-center">
               💡 Recurso de envio de mensagens virá em versão futura
             </p>
           </div>
         </>
       ) : (
         // Estado vazio
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
-          <div className="text-center text-gray-400">
+        <div className="flex-1 flex items-center justify-center bg-gray-900">
+          <div className="text-center text-gray-500">
             <MessageSquare className="w-24 h-24 mx-auto mb-4 opacity-20" />
-            <h3 className="text-xl font-semibold mb-2">WhatsApp Inbox</h3>
+            <h3 className="text-xl font-semibold mb-2 text-gray-400">WhatsApp Inbox</h3>
             <p className="text-sm">
               Selecione uma conversa para ver as mensagens
             </p>

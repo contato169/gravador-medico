@@ -22,11 +22,11 @@ export default function ContactList({
   return (
     <div className="flex-1 overflow-y-auto">
       {conversations.length === 0 ? (
-        <div className="p-8 text-center text-gray-500">
+        <div className="p-8 text-center text-gray-400">
           <p className="text-sm">Nenhuma conversa encontrada</p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-700">
           {conversations.map((conversation) => (
             <ContactItem
               key={conversation.remote_jid}
@@ -62,8 +62,8 @@ function ContactItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full p-4 hover:bg-gray-50 transition-colors text-left ${
-        isSelected ? 'bg-gray-100' : ''
+      className={`w-full p-4 hover:bg-gray-700 transition-colors text-left ${
+        isSelected ? 'bg-gray-700' : ''
       }`}
     >
       <div className="flex items-start gap-3">
@@ -76,7 +76,7 @@ function ContactItem({
               className="w-12 h-12 rounded-full object-cover"
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-white font-semibold">
+            <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white font-semibold">
               {displayName[0]?.toUpperCase() || '?'}
             </div>
           )}
@@ -85,20 +85,20 @@ function ContactItem({
         {/* Conteúdo */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="font-semibold text-gray-900 truncate">
+            <h3 className="font-semibold text-white truncate">
               {displayName}
             </h3>
             {lastMessageTime && (
-              <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+              <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
                 {lastMessageTime}
               </span>
             )}
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600 truncate">
+            <p className="text-sm text-gray-400 truncate">
               {conversation.last_message_from_me && (
-                <span className="text-gray-400 mr-1">Você: </span>
+                <span className="text-gray-500 mr-1">Você: </span>
               )}
               {conversation.last_message_content || 'Sem mensagens'}
             </p>

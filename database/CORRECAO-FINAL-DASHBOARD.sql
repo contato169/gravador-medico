@@ -79,25 +79,35 @@ USING (true);
 -- ========================================
 
 -- 3️⃣ View customer_sales_summary (COM COALESCE para evitar undefined)
-DROP VIEW IF EXISTS public.customer_sales_summary CASCADE;
-CREATE OR REPLACE VIEW public.customer_sales_summary AS
-SELECT 
-    c.id,
-    c.email,
-    c.name,
-    c.phone,
-    c.cpf,
-    c.status,
-    c.segment,
-    c.created_at,
-    COALESCE(c.total_orders, 0)::INTEGER as total_orders,
-    COALESCE(c.total_spent, 0)::NUMERIC as total_spent,
-    COALESCE(c.average_order_value, 0)::NUMERIC as average_order_value,
-    c.last_purchase_at,
-    c.first_purchase_at,
-    c.updated_at
-FROM public.customers c
-ORDER BY c.total_spent DESC NULLS LAST;
+-- APENAS cria se a tabela customers existir
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'customers') THEN
+        DROP VIEW IF EXISTS public.customer_sales_summary CASCADE;
+        EXECUTE '
+        CREATE OR REPLACE VIEW public.customer_sales_summary AS
+        SELECT 
+            c.id,
+            c.email,
+            c.name,
+            c.phone,
+            COALESCE(c.total_orders, 0)::INTEGER as total_orders,
+            COALESCE(c.total_spent, 0)::NUMERIC as total_spent,
+            COALESCE(c.average_order_value, 0)::NUMERIC as average_order_value,
+            c.last_purchase_at,
+            c.first_purchase_at,
+            c.status,
+            c.segment,
+            c.created_at,
+            c.updated_at
+        FROM public.customers c
+        ORDER BY c.total_spent DESC NULLS LAST
+        ';
+        RAISE NOTICE 'View customer_sales_summary criada com sucesso';
+    ELSE
+        RAISE NOTICE 'Tabela customers não existe - pulando criação de customer_sales_summary';
+    END IF;
+END $$;
 
 -- 4️⃣ View abandoned_carts_summary
 DROP VIEW IF EXISTS public.abandoned_carts_summary CASCADE;
@@ -110,13 +120,14 @@ SELECT
 FROM public.abandoned_carts
 GROUP BY status;
 
--- 5️⃣ View sales_by_day (se não existir)
+-- 5️⃣ View sales_by_day (vendas agrupadas por dia)
+DROP VIEW IF EXISTS public.sales_by_day CASCADE;
 CREATE OR REPLACE VIEW public.sales_by_day AS
 SELECT 
     DATE(created_at) as sale_date,
     COUNT(*)::INTEGER as total_sales,
-    COALESCE(SUM(final_amount), 0)::NUMERIC as total_revenue,
-    COALESCE(AVG(final_amount), 0)::NUMERIC as avg_order_value
+    COALESCE(SUM(total_amount), 0)::NUMERIC as total_revenue,
+    COALESCE(AVG(total_amount), 0)::NUMERIC as avg_order_value
 FROM public.sales
 WHERE status IN ('approved', 'paid', 'completed')
 GROUP BY DATE(created_at)

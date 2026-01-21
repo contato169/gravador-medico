@@ -79,10 +79,11 @@ USING (true);
 -- ========================================
 
 -- 3️⃣ View customer_sales_summary (COM COALESCE para evitar undefined)
--- APENAS cria se a tabela customers existir
+-- CALCULA as métricas a partir da tabela sales
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'customers') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'customers') 
+       AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sales') THEN
         DROP VIEW IF EXISTS public.customer_sales_summary CASCADE;
         EXECUTE '
         CREATE OR REPLACE VIEW public.customer_sales_summary AS
@@ -91,21 +92,21 @@ BEGIN
             c.email,
             c.name,
             c.phone,
-            COALESCE(c.total_orders, 0)::INTEGER as total_orders,
-            COALESCE(c.total_spent, 0)::NUMERIC as total_spent,
-            COALESCE(c.average_order_value, 0)::NUMERIC as average_order_value,
-            c.last_purchase_at,
-            c.first_purchase_at,
-            c.status,
-            c.segment,
+            COALESCE(COUNT(s.id), 0)::INTEGER as total_orders,
+            COALESCE(SUM(CASE WHEN s.status IN (''approved'', ''paid'', ''completed'') THEN s.total_amount ELSE 0 END), 0)::NUMERIC as total_spent,
+            COALESCE(AVG(CASE WHEN s.status IN (''approved'', ''paid'', ''completed'') THEN s.total_amount ELSE NULL END), 0)::NUMERIC as average_order_value,
+            MAX(s.created_at) as last_purchase_at,
+            MIN(s.created_at) as first_purchase_at,
             c.created_at,
             c.updated_at
         FROM public.customers c
-        ORDER BY c.total_spent DESC NULLS LAST
+        LEFT JOIN public.sales s ON c.email = s.customer_email
+        GROUP BY c.id, c.email, c.name, c.phone, c.created_at, c.updated_at
+        ORDER BY total_spent DESC NULLS LAST
         ';
         RAISE NOTICE 'View customer_sales_summary criada com sucesso';
     ELSE
-        RAISE NOTICE 'Tabela customers não existe - pulando criação de customer_sales_summary';
+        RAISE NOTICE 'Tabela customers ou sales não existe - pulando criação de customer_sales_summary';
     END IF;
 END $$;
 

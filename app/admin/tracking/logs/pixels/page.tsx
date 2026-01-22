@@ -231,7 +231,7 @@ export default function PixelLogsPage() {
 
       {/* Filtros */}
       <Card className="bg-zinc-900 border-zinc-800">
-        <CardContent className="p-4">
+        <CardContent className="p-6">
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />

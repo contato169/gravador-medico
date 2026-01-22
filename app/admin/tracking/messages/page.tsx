@@ -171,7 +171,7 @@ export default function TrackingMessagesPage() {
 
       {/* Barra de Busca */}
       <Card className="bg-zinc-900 border-zinc-800">
-        <CardContent className="p-4">
+        <CardContent className="p-6">
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
@@ -193,7 +193,7 @@ export default function TrackingMessagesPage() {
       {/* Estatísticas Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-zinc-900 border-zinc-800">
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-zinc-400">Total de Mensagens</p>
@@ -207,7 +207,7 @@ export default function TrackingMessagesPage() {
         </Card>
 
         <Card className="bg-zinc-900 border-zinc-800">
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-zinc-400">Total Enviado</p>
@@ -223,7 +223,7 @@ export default function TrackingMessagesPage() {
         </Card>
 
         <Card className="bg-zinc-900 border-zinc-800">
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-zinc-400">Conversões</p>
@@ -239,7 +239,7 @@ export default function TrackingMessagesPage() {
         </Card>
 
         <Card className="bg-zinc-900 border-zinc-800">
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-zinc-400">Taxa Média</p>

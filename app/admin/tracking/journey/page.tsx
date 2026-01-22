@@ -254,7 +254,7 @@ export default function TrackingJourneyPage() {
                   <Card className={`bg-zinc-800/50 border-zinc-700 hover:border-zinc-600 transition-all ${
                     !step.is_active ? 'opacity-60' : ''
                   }`}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-5">
                       <div className="flex items-center gap-4">
                         {/* Drag Handle */}
                         <div className="cursor-move text-zinc-600 hover:text-zinc-400">

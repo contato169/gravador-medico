@@ -127,7 +127,7 @@ export default function TrackingSettingsPage() {
         <CardContent className="space-y-3">
           {webhookEndpoints.map((endpoint) => (
             <Card key={endpoint.id} className="bg-zinc-800/50 border-zinc-700">
-              <CardContent className="p-4">
+              <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">

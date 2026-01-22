@@ -536,6 +536,8 @@ export async function POST(request: NextRequest) {
     const fromMeValue = (payload.data.key as any).fromMe
     const fromMeBoolean = fromMeValue === true || fromMeValue === 'true' || fromMeValue === 1
     
+    console.log(`📝 from_me: ${fromMeValue} (${typeof fromMeValue}) → ${fromMeBoolean}`)
+    
     const mappedStatus = mapEvolutionStatus(status) ?? (fromMeBoolean ? 'sent' : undefined)
 
     const messageInput: CreateMessageInput = {

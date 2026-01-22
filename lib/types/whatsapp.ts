@@ -56,6 +56,7 @@ export interface EvolutionMessagePayload {
       remoteJid: string
       fromMe: boolean
       id: string
+      participant?: string  // Para mensagens de grupo
     }
     pushName?: string
     message: {

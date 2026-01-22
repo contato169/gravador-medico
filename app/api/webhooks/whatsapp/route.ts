@@ -14,16 +14,19 @@ import type { EvolutionMessagePayload, CreateMessageInput } from '@/lib/types/wh
  * 
  * ESTRATÉGIA DEFINITIVA (confirmada via fetchInstances):
  * 1. Tenta extrair do próprio payload da mensagem
- * 2. Usa GET /chat/findContacts/{instance}?number=xxx (CONFIRMADO FUNCIONANDO)
- * 3. Se falhar, retorna null e NÃO TRAVA o processo
+ * 2. Usa POST /chat/findContacts/{instance} com body {number: xxx} (CONFIRMADO FUNCIONANDO)
+ * 3. BUSCA O CONTATO ESPECÍFICO no array (não pega o primeiro)
+ * 4. Se falhar, retorna null e NÃO TRAVA o processo
  * 
  * IMPORTANTE: 
- * - Query usa apenas o número (sem @s.whatsapp.net)
- * - Resposta vem no campo "profilePicUrl" ou "profilePictureUrl"
+ * - Body usa apenas o número (sem @s.whatsapp.net)
+ * - Resposta é ARRAY - precisa encontrar o contato correto por remoteJid
+ * - Campo da foto: "profilePicUrl" ou "profilePictureUrl"
  * - Mensagem SEMPRE será salva, mesmo sem foto
  */
 async function fetchProfilePicture(
   remoteJid: string, 
+  participant: string | undefined,
   messagePayload?: any
 ): Promise<string | null> {
   // Wrapper try-catch global para garantir que NUNCA trava
@@ -59,21 +62,30 @@ async function fetchProfilePicture(
     // ESTRATÉGIA 2: POST /chat/findContacts (VALIDADO via terminal)
     // Body: {"number": "5521988960217"} (apenas número, sem @s.whatsapp.net)
     // Response: Array com campo profilePicUrl
+    // CORREÇÃO: Identifica remetente correto (grupo usa participant)
     // ================================================================
-    const phoneNumber = remoteJid.split('@')[0]  // "5521988960217@s.whatsapp.net" → "5521988960217"
+    
+    // 🎯 IDENTIFICAR REMETENTE CORRETO
+    // Se for grupo (@g.us), usar participant
+    // Se for privado (@s.whatsapp.net), usar remoteJid
+    const isGroup = remoteJid.includes('@g.us')
+    const actualSenderJid = isGroup && participant ? participant : remoteJid
+    const phoneNumber = actualSenderJid.split('@')[0]  // "5521988960217@s.whatsapp.net" → "5521988960217"
+    
+    console.log(`📸 [DEBUG FOTO] ===== INÍCIO BUSCA FOTO =====`)
+    console.log(`📸 [DEBUG FOTO] RemoteJid completo: ${remoteJid}`)
+    console.log(`📸 [DEBUG FOTO] É grupo: ${isGroup}`)
+    console.log(`📸 [DEBUG FOTO] Participant (se grupo): ${participant || 'N/A'}`)
+    console.log(`📸 [DEBUG FOTO] Remetente real (JID): ${actualSenderJid}`)
+    console.log(`📸 [DEBUG FOTO] Phone number extraído: ${phoneNumber}`)
+    console.log(`📸 [DEBUG FOTO] ===========================`)
+    
     const url = `${EVOLUTION_API_URL}/chat/findContacts/${EVOLUTION_INSTANCE_NAME}`
     const requestBody = { number: phoneNumber }
     
-    console.log(`📸 [DEBUG FOTO] ===== INÍCIO BUSCA FOTO =====`)
-    console.log(`📸 [DEBUG FOTO] EVOLUTION_API_URL: ${EVOLUTION_API_URL}`)
-    console.log(`📸 [DEBUG FOTO] EVOLUTION_INSTANCE_NAME: ${EVOLUTION_INSTANCE_NAME}`)
-    console.log(`📸 [DEBUG FOTO] EVOLUTION_API_KEY: ${EVOLUTION_API_KEY ? '***' + EVOLUTION_API_KEY.slice(-4) : 'UNDEFINED'}`)
-    console.log(`📸 [DEBUG FOTO] RemoteJid completo: ${remoteJid}`)
-    console.log(`📸 [DEBUG FOTO] Phone number extraído: ${phoneNumber}`)
-    console.log(`📸 [DEBUG FOTO] URL Completa: ${url}`)
+    console.log(`📸 [DEBUG FOTO] URL: ${url}`)
     console.log(`📸 [DEBUG FOTO] Método: POST`)
     console.log(`📸 [DEBUG FOTO] Body: ${JSON.stringify(requestBody)}`)
-    console.log(`📸 [DEBUG FOTO] ===========================`)
     
     // Timeout de 5 segundos para não travar o webhook
     const controller = new AbortController()
@@ -119,19 +131,28 @@ async function fetchProfilePicture(
       return null
     }
     
-    // Pegar o primeiro contato e procurar profilePicUrl ou profilePictureUrl
-    const firstContact = contacts[0]
-    console.log(`📸 [DEBUG FOTO] Primeiro contato:`, JSON.stringify(firstContact, null, 2))
+    // 🎯 BUSCAR CONTATO ESPECÍFICO (não pegar o primeiro!)
+    // Precisamos encontrar o contato correto pelo remoteJid
+    const targetContact = contacts.find(c => c.remoteJid === actualSenderJid)
+    
+    if (!targetContact) {
+      console.log(`⚠️ [DEBUG FOTO] Contato ${actualSenderJid} não encontrado no array`)
+      console.log(`📸 [DEBUG FOTO] Contatos retornados:`, contacts.map(c => c.remoteJid))
+      console.log(`📸 [DEBUG FOTO] ===========================`)
+      return null
+    }
+    
+    console.log(`📸 [DEBUG FOTO] Contato encontrado:`, JSON.stringify(targetContact, null, 2))
     
     const photoUrl = 
-      firstContact.profilePicUrl ||
-      firstContact.profilePictureUrl || 
-      firstContact.picture ||
-      firstContact.imgUrl ||
+      targetContact.profilePicUrl ||
+      targetContact.profilePictureUrl || 
+      targetContact.picture ||
+      targetContact.imgUrl ||
       null
     
-    console.log(`📸 [DEBUG FOTO] Campo profilePicUrl: ${firstContact.profilePicUrl}`)
-    console.log(`📸 [DEBUG FOTO] Campo profilePictureUrl: ${firstContact.profilePictureUrl}`)
+    console.log(`📸 [DEBUG FOTO] Campo profilePicUrl: ${targetContact.profilePicUrl}`)
+    console.log(`📸 [DEBUG FOTO] Campo profilePictureUrl: ${targetContact.profilePictureUrl}`)
     console.log(`📸 [DEBUG FOTO] Foto final selecionada: ${photoUrl}`)
     console.log(`📸 [DEBUG FOTO] ===========================`)
 
@@ -228,6 +249,22 @@ export async function POST(request: NextRequest) {
   try {
     const payload: EvolutionMessagePayload = await request.json()
 
+    // ================================================================
+    // 🔍 DEBUG COMPLETO DO PAYLOAD (para identificar estrutura real)
+    // ================================================================
+    const payloadKey = payload?.data?.key
+    
+    console.log('=' .repeat(60))
+    console.log('[DEBUG KEY] PAYLOAD COMPLETO:')
+    console.log(JSON.stringify(payload, null, 2))
+    console.log('=' .repeat(60))
+    console.log('[DEBUG KEY] key:', JSON.stringify(payloadKey, null, 2))
+    console.log('[DEBUG FOTO] remoteJid:', payloadKey?.remoteJid)
+    console.log('[DEBUG FOTO] participant:', payloadKey?.participant)
+    console.log('[DEBUG FOTO] fromMe:', payloadKey?.fromMe)
+    console.log('[DEBUG FOTO] É grupo?', payloadKey?.remoteJid?.includes('@g.us'))
+    console.log('=' .repeat(60))
+
     console.log('📥 Webhook recebido:', {
       event: payload.event,
       instance: payload.instance,
@@ -262,9 +299,14 @@ export async function POST(request: NextRequest) {
     // ================================================================
     // PASSO 1: Buscar foto de perfil (NÃO CRÍTICO - nunca trava)
     // Usa endpoint /chat/findContacts confirmado via teste curl
+    // IMPORTANTE: Passa participant para identificar remetente em grupos
     // ================================================================
     console.log('📸 [FOTO] Iniciando busca de foto de perfil...')
-    const profilePictureUrl = await fetchProfilePicture(key.remoteJid, payload.data)
+    const profilePictureUrl = await fetchProfilePicture(
+      key.remoteJid, 
+      key.participant,  // Para mensagens de grupo
+      payload.data
+    )
     
     if (profilePictureUrl) {
       console.log(`✅ [FOTO] Foto obtida com sucesso: ${profilePictureUrl.substring(0, 50)}...`)

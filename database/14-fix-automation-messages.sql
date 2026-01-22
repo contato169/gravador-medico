@@ -51,22 +51,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- 4. Verificar se trigger já existe antes de criar
-DO $$ 
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger 
-    WHERE tgname = 'auto_set_from_me_on_insert'
-  ) THEN
-    -- Trigger para detectar automaticamente mensagens enviadas
-    CREATE TRIGGER auto_set_from_me_on_insert
-    BEFORE INSERT ON whatsapp_messages
-    FOR EACH ROW
-    EXECUTE FUNCTION auto_detect_from_me();
-  END IF;
-END $$;
-
--- 5. Função do trigger
+-- 4. Função do trigger (CRIAR ANTES DO TRIGGER!)
 CREATE OR REPLACE FUNCTION auto_detect_from_me()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -85,6 +70,21 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 5. Verificar se trigger já existe antes de criar
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger 
+    WHERE tgname = 'auto_set_from_me_on_insert'
+  ) THEN
+    -- Trigger para detectar automaticamente mensagens enviadas
+    CREATE TRIGGER auto_set_from_me_on_insert
+    BEFORE INSERT ON whatsapp_messages
+    FOR EACH ROW
+    EXECUTE FUNCTION auto_detect_from_me();
+  END IF;
+END $$;
 
 -- 6. Adicionar comentários
 COMMENT ON FUNCTION is_sent_message_id IS 'Detecta se um message_id é de mensagem enviada (vs recebida) baseado em padrões conhecidos';

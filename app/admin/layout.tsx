@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   Clock,
   MessageSquare,
-  MessageCircle
+  MessageCircle,
+  MousePointerClick
 } from 'lucide-react'
 import NotificationBell from '@/components/NotificationBell'
 
@@ -83,6 +84,12 @@ const menuItems = [
     icon: Users, 
     label: 'CRM', 
     href: '/admin/crm',
+    badge: null
+  },
+  { 
+    icon: MousePointerClick, 
+    label: 'Tracking', 
+    href: '/admin/tracking',
     badge: null
   },
   { 

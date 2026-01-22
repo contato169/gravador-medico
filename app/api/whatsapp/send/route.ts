@@ -3,6 +3,7 @@
 // ================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { upsertWhatsAppMessage } from '@/lib/whatsapp-db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,6 +50,29 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
     console.log('✅ Mensagem enviada com sucesso:', data)
+
+    // ================================================================
+    // SALVAR MENSAGEM NO BANCO (já que webhook pode não disparar para msgs enviadas)
+    // ================================================================
+    try {
+      console.log('💾 Salvando mensagem enviada no banco...')
+      
+      const savedMessage = await upsertWhatsAppMessage({
+        message_id: data.key.id,
+        remote_jid: data.key.remoteJid,
+        content: message,
+        message_type: 'text',
+        from_me: true,  // ← FORÇAR TRUE para mensagens enviadas
+        timestamp: new Date(data.messageTimestamp * 1000).toISOString(),
+        status: data.status || 'PENDING',
+        raw_payload: data
+      })
+      
+      console.log('✅ Mensagem salva no banco:', savedMessage.id, 'from_me:', savedMessage.from_me)
+    } catch (dbError) {
+      console.error('❌ Erro ao salvar no banco (não-fatal):', dbError)
+      // Não falha a requisição se houver erro no banco
+    }
 
     return NextResponse.json({
       success: true,

@@ -31,8 +31,12 @@ function mapEvolutionStatus(evolutionStatus?: string): 'sent' | 'delivered' | 'r
   return 'sent' // default
 }
 
-function normalizeFromMeValue(value: unknown) {
-  return value === true || value === 'true' || value === 1 || value === '1'
+function normalizeFromMeValue(value: unknown): boolean {
+  // IMPORTANTE: Apenas retorna true se o valor for explicitamente true
+  // Qualquer outro valor (false, undefined, null, 0, '') retorna false
+  const result = value === true || value === 'true' || value === 1 || value === '1'
+  console.log('🔍 [normalizeFromMeValue] input:', value, 'type:', typeof value, '-> output:', result)
+  return result
 }
 
 function resolveMessageType(message: any, fallback?: string) {

@@ -24,6 +24,32 @@ interface SendReactionParams {
   emoji: string
 }
 
+interface SendPresenceParams {
+  instanceName: string
+  number: string
+  presence: 'composing' | 'recording' | 'available' | 'unavailable' | string
+  delay?: number
+}
+
+interface InstancePresenceParams {
+  instanceName: string
+  presence: 'available' | 'unavailable' | string
+}
+
+interface AlwaysOnlineParams {
+  instanceName: string
+  alwaysOnline?: boolean
+}
+
+interface PrivacySettingsParams {
+  instanceName: string
+  last_seen?: 'all' | 'contacts' | 'contact_blacklist' | 'none'
+  online?: 'all' | 'contacts' | 'contact_blacklist' | 'none'
+  profile_photo?: 'all' | 'contacts' | 'contact_blacklist' | 'none'
+  status?: 'all' | 'contacts' | 'contact_blacklist' | 'none'
+  readreceipts?: 'all' | 'contacts' | 'contact_blacklist' | 'none'
+}
+
 /**
  * Envia mensagem de texto via Evolution API
  */
@@ -138,6 +164,113 @@ export async function sendReaction({ instanceName, remoteJid, messageId, emoji }
     return await response.json()
   } catch (error) {
     console.error('Error sending reaction:', error)
+    throw error
+  }
+}
+
+/**
+ * Envia presença (digitando/gravando) para um chat
+ */
+export async function sendPresence({ instanceName, number, presence, delay }: SendPresenceParams) {
+  try {
+    const response = await fetch(`${EVOLUTION_API_URL}/chat/sendPresence/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_API_KEY,
+      },
+      body: JSON.stringify({
+        number: number.replace(/@s\.whatsapp\.net$/i, ''),
+        presence,
+        ...(delay !== undefined ? { delay } : {})
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Evolution API error: ${response.statusText}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error sending presence:', error)
+    throw error
+  }
+}
+
+/**
+ * Define presença global da instância (online/offline)
+ */
+export async function setInstancePresence({ instanceName, presence }: InstancePresenceParams) {
+  try {
+    const response = await fetch(`${EVOLUTION_API_URL}/instance/setPresence/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_API_KEY,
+      },
+      body: JSON.stringify({ presence }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Evolution API error: ${response.statusText}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error setting instance presence:', error)
+    throw error
+  }
+}
+
+/**
+ * Ativa/Desativa Always Online
+ */
+export async function setAlwaysOnline({ instanceName, alwaysOnline = true }: AlwaysOnlineParams) {
+  try {
+    const response = await fetch(`${EVOLUTION_API_URL}/settings/set/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': EVOLUTION_API_KEY,
+      },
+      body: JSON.stringify({ alwaysOnline }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Evolution API error: ${response.statusText}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error setting always online:', error)
+    throw error
+  }
+}
+
+/**
+ * Atualiza configurações de privacidade do perfil
+ */
+export async function updatePrivacySettings({ instanceName, ...settings }: PrivacySettingsParams) {
+  try {
+    const response = await fetch(
+      `${EVOLUTION_API_URL}/profile-settings/update-privacy-settings/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': EVOLUTION_API_KEY,
+        },
+        body: JSON.stringify(settings),
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Evolution API error: ${response.statusText}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error updating privacy settings:', error)
     throw error
   }
 }

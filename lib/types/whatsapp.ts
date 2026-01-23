@@ -15,6 +15,12 @@ export interface WhatsAppContact {
   last_message_timestamp?: string
   last_message_from_me?: boolean
   unread_count: number
+
+  // Presença (Realtime)
+  is_online?: boolean
+  last_seen_at?: string
+  is_typing?: boolean
+  typing_updated_at?: string
   
   created_at: string
   updated_at: string

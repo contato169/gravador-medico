@@ -7,7 +7,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode, useRef } from 'react'
 import type { Notification, NotificationContextValue } from '@/lib/types/notifications'
 import { toast } from 'sonner'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import type { WhatsAppMessage } from '@/lib/types/whatsapp'
 import type { AdminChatMessage } from '@/lib/types/admin-chat'
 
@@ -130,7 +130,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     console.log('🔌 NotificationProvider: Conectando ao Realtime...')
 
     // Canal WhatsApp
-    const whatsappChannel = supabaseAdmin
+  const whatsappChannel = supabase
       .channel('global-whatsapp-notifications')
       .on(
         'postgres_changes',
@@ -159,7 +159,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           }
           
           // Buscar dados do contato
-          const { data: contact } = await supabaseAdmin
+          const { data: contact } = await supabase
             .from('whatsapp_contacts')
             .select('name, push_name, profile_picture_url')
             .eq('remote_jid', newMessage.remote_jid)
@@ -186,7 +186,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       })
 
     // Canal Chat Interno
-    const chatChannel = supabaseAdmin
+  const chatChannel = supabase
       .channel('global-admin-chat-notifications')
       .on(
         'postgres_changes',
@@ -200,7 +200,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           lastAdminChatMessageIdRef.current = newMessage.id
           
           // Buscar dados do sender
-          const { data: sender } = await supabaseAdmin
+          const { data: sender } = await supabase
             .from('users')
             .select('name, email, avatar_url')
             .eq('id', newMessage.sender_id)
@@ -225,8 +225,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       })
 
     return () => {
-      supabaseAdmin.removeChannel(whatsappChannel)
-      supabaseAdmin.removeChannel(chatChannel)
+  supabase.removeChannel(whatsappChannel)
+  supabase.removeChannel(chatChannel)
     }
   }, [addNotification])
 
@@ -238,7 +238,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const bootstrap = async () => {
       try {
-        const { data: latestMessage } = await supabaseAdmin
+        const { data: latestMessage } = await supabase
           .from('whatsapp_messages')
           .select('id')
           .order('timestamp', { ascending: false })
@@ -252,7 +252,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const { data: latestChat } = await supabaseAdmin
+        const { data: latestChat } = await supabase
           .from('admin_chat_messages')
           .select('id')
           .order('created_at', { ascending: false })
@@ -268,58 +268,47 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const pollNotifications = async () => {
       try {
-        const { data } = await supabaseAdmin
-          .from('whatsapp_messages')
-          .select('id, remote_jid, content, from_me, timestamp')
-          .order('timestamp', { ascending: false })
-          .limit(1)
+        const params = new URLSearchParams({
+          lastWhatsAppId: lastWhatsAppMessageIdRef.current || '',
+          lastAdminChatId: lastAdminChatMessageIdRef.current || ''
+        })
 
-        const latest = data?.[0]
-        if (latest && latest.id !== lastWhatsAppMessageIdRef.current) {
-          lastWhatsAppMessageIdRef.current = latest.id
-          const fromMe = normalizeFromMe(latest.from_me)
-          if (!fromMe) {
-            const { data: contact } = await supabaseAdmin
-              .from('whatsapp_contacts')
-              .select('name, push_name, profile_picture_url')
-              .eq('remote_jid', latest.remote_jid)
-              .single()
+        const response = await fetch(`/api/whatsapp/notifications?${params.toString()}`)
+        if (!response.ok) return
+        const payload = await response.json()
 
+  const latestWhatsApp = payload?.whatsapp
+        if (latestWhatsApp?.id && latestWhatsApp.id !== lastWhatsAppMessageIdRef.current) {
+          lastWhatsAppMessageIdRef.current = latestWhatsApp.id
+          const fromMe = normalizeFromMe(latestWhatsApp.from_me)
+
+          if (!fromMe && latestWhatsApp.remote_jid) {
+            const contact = latestWhatsApp.contact || null
             const contactName =
               contact?.name ||
               contact?.push_name ||
-              latest.remote_jid.split('@')[0]
+              latestWhatsApp.remote_jid.split('@')[0]
 
             addNotification({
               type: 'whatsapp_message',
               title: contactName,
-              message: latest.content || '[Mídia]',
+              message: latestWhatsApp.content || '[Mídia]',
               metadata: {
-                whatsapp_remote_jid: latest.remote_jid,
-                whatsapp_message_id: latest.id,
+                whatsapp_remote_jid: latestWhatsApp.remote_jid,
+                whatsapp_message_id: latestWhatsApp.id,
                 profile_picture_url: contact?.profile_picture_url
               }
             })
           }
         }
-      } catch {
-        // Silenciar erros de polling para evitar ruído no console
-      }
 
-      try {
-        const { data } = await supabaseAdmin
-          .from('admin_chat_messages')
-          .select('id, conversation_id, sender_id, content, created_at')
-          .order('created_at', { ascending: false })
-          .limit(1)
-
-        const latest = data?.[0]
-        if (latest && latest.id !== lastAdminChatMessageIdRef.current) {
-          lastAdminChatMessageIdRef.current = latest.id
-          const { data: sender } = await supabaseAdmin
+        const latestAdminChat = payload?.adminChat
+        if (latestAdminChat?.id && latestAdminChat.id !== lastAdminChatMessageIdRef.current) {
+          lastAdminChatMessageIdRef.current = latestAdminChat.id
+          const { data: sender } = await supabase
             .from('users')
             .select('name, email, avatar_url')
-            .eq('id', latest.sender_id)
+            .eq('id', latestAdminChat.sender_id)
             .single()
 
           const senderName = sender?.name || sender?.email || 'Admin'
@@ -327,10 +316,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           addNotification({
             type: 'admin_chat_message',
             title: senderName,
-            message: latest.content || '[Mídia]',
+            message: latestAdminChat.content || '[Mídia]',
             metadata: {
-              admin_chat_conversation_id: latest.conversation_id,
-              admin_chat_message_id: latest.id,
+              admin_chat_conversation_id: latestAdminChat.conversation_id,
+              admin_chat_message_id: latestAdminChat.id,
               profile_picture_url: sender?.avatar_url
             }
           })

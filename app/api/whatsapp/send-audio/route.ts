@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { upsertWhatsAppMessage } from '@/lib/whatsapp-db'
+import { sendChatPresenceWithPulse, startPresenceLoop } from '@/lib/whatsapp-presence'
 
 function mapEvolutionStatus(
   evolutionStatus?: string
@@ -29,6 +30,14 @@ export async function POST(request: NextRequest) {
     const delay = formData.get('delay')
     const encoding = formData.get('encoding')
 
+    console.log('🎙️ [/api/whatsapp/send-audio] Payload:', {
+      remoteJid,
+      hasFile: file instanceof File,
+      hasBase64: typeof audioBase64 === 'string',
+      delay,
+      encoding
+    })
+
     if (!remoteJid || typeof remoteJid !== 'string') {
       return NextResponse.json(
         { success: false, message: 'remoteJid e obrigatorio' },
@@ -52,6 +61,30 @@ export async function POST(request: NextRequest) {
     }
 
     const url = `${EVOLUTION_API_URL}/message/sendWhatsAppAudio/${EVOLUTION_INSTANCE_NAME}`
+
+    const presenceLoop = startPresenceLoop({
+      number: remoteJid,
+      presence: 'recording',
+      delay: 4500,
+      intervalMs: 2400,
+      maxIntervalMs: 7500,
+      backoffFactor: 1.6,
+      alternateAvailable: true,
+      availableDelayMs: 700
+    })
+
+    try {
+      await sendChatPresenceWithPulse({
+        number: remoteJid,
+        presence: 'recording',
+        delay: 4500,
+        pulses: 2,
+        intervalMs: 1000
+      })
+      await new Promise((resolve) => setTimeout(resolve, 1600))
+    } catch (presenceError) {
+      console.warn('⚠️ Não foi possível enviar presença (gravando):', presenceError)
+    }
 
     let audioPayload: string | null = null
 
@@ -81,22 +114,29 @@ export async function POST(request: NextRequest) {
       bodyPayload.delay = Number(delay) || delay
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        apikey: EVOLUTION_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(bodyPayload)
-    })
+    let data: any
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('❌ Erro da Evolution API:', error)
-      throw new Error(`Erro ao enviar audio: ${response.statusText}`)
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          apikey: EVOLUTION_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyPayload)
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        console.error('❌ Erro da Evolution API:', error)
+        throw new Error(`Erro ao enviar audio: ${response.statusText}`)
+      }
+
+      data = await response.json()
+      console.log('✅ [/api/whatsapp/send-audio] Resposta Evolution:', data)
+    } finally {
+      presenceLoop.stop()
     }
-
-    const data = await response.json()
 
     try {
       const mediaUrl =

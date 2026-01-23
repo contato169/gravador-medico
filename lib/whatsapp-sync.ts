@@ -48,7 +48,26 @@ export async function syncConversationHistory(
     }
 
     const data = await response.json()
-    const messages = data.messages || []
+    
+    // Debug: ver o que a API retornou
+    console.log('📦 Resposta da Evolution API:', JSON.stringify(data).substring(0, 500))
+    
+    // Tentar extrair mensagens de diferentes formatos de resposta
+    let messages: any[] = []
+    
+    if (Array.isArray(data?.messages)) {
+      messages = data.messages
+    } else if (Array.isArray(data?.data?.messages)) {
+      messages = data.data.messages
+    } else if (Array.isArray(data)) {
+      messages = data
+    } else if (Array.isArray(data?.data)) {
+      messages = data.data
+    } else if (data && typeof data === 'object') {
+      // Se for um objeto único, colocar em array
+      console.warn('⚠️ Resposta não é array, tentando processar como objeto único')
+      messages = []
+    }
 
     console.log(`📥 Encontradas ${messages.length} mensagens`)
 
@@ -57,24 +76,50 @@ export async function syncConversationHistory(
     }
 
     // Converter para o formato do banco
-    const messagesToInsert: CreateMessageInput[] = messages.map((msg: any) => {
-      const { content, media_url, caption, type } = extractMessageContent(
-        msg.message,
-        msg.messageType
-      )
+    const normalizeFromMe = (value: unknown) =>
+      value === true || value === 'true' || value === 1 || value === '1'
 
-      return {
-        message_id: msg.key.id,
-        remote_jid: msg.key.remoteJid,
-        content,
-        message_type: type,
-        media_url,
-        caption,
-        from_me: msg.key.fromMe,
-        timestamp: new Date(msg.messageTimestamp * 1000).toISOString(),
-        raw_payload: msg
-      }
-    })
+    // Filtrar e mapear mensagens válidas
+    const messagesToInsert: CreateMessageInput[] = messages
+      .filter((msg: any) => {
+        // Validar que a mensagem tem os campos necessários
+        if (!msg?.key?.id || !msg?.key?.remoteJid) {
+          console.warn('⚠️ Mensagem sem key.id ou key.remoteJid:', msg)
+          return false
+        }
+        return true
+      })
+      .map((msg: any) => {
+        const { content, media_url, caption, type } = extractMessageContent(
+          msg.message,
+          msg.messageType
+        )
+
+        // Tratar timestamp que pode vir em diferentes formatos
+        let timestamp: string
+        if (typeof msg.messageTimestamp === 'number') {
+          // Se for número, assume segundos desde epoch
+          timestamp = new Date(msg.messageTimestamp * 1000).toISOString()
+        } else if (typeof msg.messageTimestamp === 'string') {
+          timestamp = new Date(msg.messageTimestamp).toISOString()
+        } else {
+          timestamp = new Date().toISOString()
+        }
+
+        return {
+          message_id: msg.key.id,
+          remote_jid: msg.key.remoteJid,
+          content,
+          message_type: type,
+          media_url,
+          caption,
+          from_me: normalizeFromMe(
+            msg.key?.fromMe ?? msg.key?.from_me ?? msg.fromMe ?? msg.from_me
+          ),
+          timestamp,
+          raw_payload: msg
+        }
+      })
 
     // Inserir em lote
     const inserted = await bulkInsertMessages(messagesToInsert)

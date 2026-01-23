@@ -8,7 +8,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import type { ChangeEvent, ClipboardEvent } from 'react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import {
   getWhatsAppConversations,
   getWhatsAppMessages,
@@ -59,6 +59,8 @@ export default function WhatsAppInboxPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false)
   const [attachmentAccept, setAttachmentAccept] = useState('')
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingOlder, setLoadingOlder] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const lastMessageTimestampRef = useRef<string | null>(null)
@@ -140,7 +142,7 @@ export default function WhatsAppInboxPage() {
   useEffect(() => {
     console.log('🔌 Conectando ao Supabase Realtime...')
     
-    const channel = supabaseAdmin
+  const channel = supabase
       .channel('whatsapp-realtime-inbox')
       .on(
         'postgres_changes',
@@ -155,35 +157,32 @@ export default function WhatsAppInboxPage() {
           const newMessage = payload.new as WhatsAppMessage
           const fromMe = normalizeFromMe(newMessage.from_me)
           
-          // 🔔 Criar notificação se NÃO for mensagem enviada por mim
-          if (!fromMe) {
-            const contact = conversations.find(c => c.remote_jid === newMessage.remote_jid)
-            const contactName =
-              contact?.name || contact?.push_name || newMessage.remote_jid.split('@')[0]
-
-            addNotification({
-              type: 'whatsapp_message',
-              title: contactName,
-              message: newMessage.content || '[Mídia]',
-              metadata: {
-                whatsapp_remote_jid: newMessage.remote_jid,
-                whatsapp_message_id: newMessage.id,
-                profile_picture_url: contact?.profile_picture_url
-              }
-            })
-          }
+          // ⚠️ NOTIFICAÇÃO REMOVIDA DAQUI - O NotificationProvider já cuida disso!
+          // Evita duplicação de notificações
           
           // Se a mensagem pertence ao chat atual aberto
           if (newMessage.remote_jid === selectedRemoteJid) {
             console.log('✅ Mensagem do chat atual - Adicionando ao estado')
             setMessages((prev) => {
-              // Evitar duplicatas
-              const exists = prev.some(
-                (msg) =>
-                  msg.id === newMessage.id ||
-                  (newMessage.message_id && msg.message_id === newMessage.message_id)
-              )
-              if (exists) return prev
+              // 🔍 DEBUG: Verificar duplicatas
+              const existsById = prev.some(msg => msg.id === newMessage.id)
+              const existsByMessageId = newMessage.message_id && prev.some(msg => msg.message_id === newMessage.message_id)
+              
+              console.log('🔍 [Deduplicação] Verificando:', {
+                newId: newMessage.id.substring(0, 10),
+                newMessageId: newMessage.message_id?.substring(0, 10),
+                existsById,
+                existsByMessageId,
+                totalMsgs: prev.length
+              })
+              
+              // Evitar duplicatas por ID ou message_id
+              if (existsById || existsByMessageId) {
+                console.log('⚠️ [Deduplicação] Mensagem duplicada detectada - ignorando')
+                return prev
+              }
+              
+              // Se for mensagem enviada por mim, tentar substituir otimista
               if (fromMe) {
                 const incomingTs = Date.parse(newMessage.timestamp)
                 let replaced = false
@@ -202,6 +201,7 @@ export default function WhatsAppInboxPage() {
                       Math.abs(msgTs - incomingTs) <= 15000
                     ) {
                       replaced = true
+                      console.log('🔄 [Deduplicação] Substituindo mensagem otimista')
                       return newMessage
                     }
                   }
@@ -209,6 +209,8 @@ export default function WhatsAppInboxPage() {
                 })
                 if (replaced) return next
               }
+              
+              console.log('➕ [Deduplicação] Adicionando nova mensagem')
               return [...prev, newMessage]
             })
             
@@ -294,15 +296,18 @@ export default function WhatsAppInboxPage() {
 
                 if (alreadyInChat) return prev
 
+                const fallbackTimestamp =
+                  updatedContact.last_message_timestamp || new Date().toISOString()
+
                 const syntheticMessage: WhatsAppMessage = {
                   id: `contact-fallback-${updatedContact.remote_jid}-${incomingTime}`,
                   remote_jid: updatedContact.remote_jid,
                   content: updatedContact.last_message_content || '[Mídia]',
                   message_type: 'text',
                   from_me: true,
-                  timestamp: updatedContact.last_message_timestamp,
+                  timestamp: fallbackTimestamp,
                   status: 'sent',
-                  created_at: updatedContact.last_message_timestamp
+                  created_at: fallbackTimestamp
                 }
 
                 return [...prev, syntheticMessage]
@@ -353,7 +358,7 @@ export default function WhatsAppInboxPage() {
     // Cleanup: Remover canal ao desmontar componente
     return () => {
       console.log('🔌 Desconectando do Supabase Realtime...')
-      supabaseAdmin.removeChannel(channel)
+  supabase.removeChannel(channel)
     }
   }, [selectedRemoteJid]) // Re-subscribe quando mudar o chat selecionado
 
@@ -371,8 +376,10 @@ export default function WhatsAppInboxPage() {
   async function loadMessages(remoteJid: string) {
     setLoadingMessages(true)
     try {
+      console.log('🔄 [loadMessages] INICIANDO carregamento para:', remoteJid)
+      
       try {
-        await fetch('/api/whatsapp/sync', {
+        const syncResponse = await fetch('/api/whatsapp/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -381,28 +388,70 @@ export default function WhatsAppInboxPage() {
             messagesLimit: 200
           })
         })
+        const syncData = await syncResponse.json()
+        console.log('🔄 [loadMessages] Resposta da sincronização:', syncData)
       } catch (syncError) {
         console.warn('⚠️ Falha ao sincronizar conversa (não crítico):', syncError)
       }
 
-      console.log('📥 [loadMessages] Carregando mensagens para:', remoteJid)
-      const data = await getWhatsAppMessages(remoteJid, 200)
+      console.log('📥 [loadMessages] Buscando mensagens do banco para:', remoteJid)
+      const LIMIT = 500 // Aumentado para mostrar mais mensagens
+      const data = await getWhatsAppMessages(remoteJid, LIMIT)
+      console.log('📥 [loadMessages] DADOS RETORNADOS:', data)
       console.log('📥 [loadMessages] Mensagens recebidas:', data.length, 'mensagens')
       console.log('📥 [loadMessages] Detalhes:', {
         total: data.length,
         fromMe: data.filter(m => m.from_me).length,
         fromThem: data.filter(m => !m.from_me).length,
-        primeiras3: data.slice(0, 3).map(m => ({
+        primeiras5: data.slice(0, 5).map(m => ({
           id: m.id.substring(0, 8),
           content: m.content?.substring(0, 30),
-          from_me: m.from_me
+          from_me: m.from_me,
+          message_type: m.message_type
+        })),
+        ultimas5: data.slice(-5).map(m => ({
+          id: m.id.substring(0, 8),
+          content: m.content?.substring(0, 30),
+          from_me: m.from_me,
+          message_type: m.message_type
         }))
       })
       setMessages(data)
+      setHasMore(data.length === LIMIT)
     } catch (error) {
       console.error('❌ Erro ao carregar mensagens:', error)
     } finally {
       setLoadingMessages(false)
+    }
+  }
+
+  async function loadOlderMessages() {
+    if (!selectedRemoteJid || loadingOlder || messages.length === 0) return
+
+    try {
+      setLoadingOlder(true)
+      const LIMIT = 200 // Aumentado para carregar mais mensagens antigas
+      const oldest = messages[0]?.timestamp
+      const olderBatch = await getWhatsAppMessages(selectedRemoteJid, LIMIT, oldest)
+
+      // Filtrar duplicados por id e message_id
+      const existingIds = new Set(messages.map((m) => m.id))
+      const existingMessageIds = new Set(messages.map((m) => m.message_id).filter(Boolean))
+
+      const filtered = olderBatch.filter((m) => {
+        if (existingIds.has(m.id)) return false
+        if (m.message_id && existingMessageIds.has(m.message_id)) return false
+        return true
+      })
+
+      const combined = [...filtered, ...messages]
+      setMessages(combined)
+      setHasMore(olderBatch.length === LIMIT)
+    } catch (error) {
+      console.error('❌ Erro ao carregar mensagens antigas:', error)
+      setHasMore(false)
+    } finally {
+      setLoadingOlder(false)
     }
   }
 
@@ -1290,6 +1339,17 @@ export default function WhatsAppInboxPage() {
               </div>
             ) : (
               <>
+                {hasMore && (
+                  <div className="flex justify-center my-2">
+                    <button
+                      onClick={loadOlderMessages}
+                      disabled={loadingOlder}
+                      className="px-4 py-2 text-sm rounded-full border border-gray-600 text-gray-200 hover:bg-gray-700 disabled:opacity-60"
+                    >
+                      {loadingOlder ? 'Carregando mensagens antigas...' : 'Carregar mensagens antigas'}
+                    </button>
+                  </div>
+                )}
                 {messages.map((msg) => (
                   <MessageBubble
                     key={msg.id}
@@ -1471,6 +1531,7 @@ export default function WhatsAppInboxPage() {
           </div>
         </div>
       )}
+
     </ChatLayout>
   )
 }

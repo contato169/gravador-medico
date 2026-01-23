@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { upsertWhatsAppMessage } from '@/lib/whatsapp-db'
+import { sendChatPresenceWithPulse, startPresenceLoop } from '@/lib/whatsapp-presence'
 
 // ================================================================
 // Mapear status da Evolution API para nosso schema
@@ -25,6 +26,12 @@ export async function POST(request: NextRequest) {
   try {
     const { remoteJid, message, quotedMessageId } = await request.json()
 
+    console.log('📨 [/api/whatsapp/send] Payload:', {
+      remoteJid,
+      messagePreview: typeof message === 'string' ? message.slice(0, 120) : message,
+      quotedMessageId
+    })
+
     if (!remoteJid || !message) {
       return NextResponse.json(
         { success: false, message: 'remoteJid e message são obrigatórios' },
@@ -45,6 +52,30 @@ export async function POST(request: NextRequest) {
 
     console.log('📤 Enviando mensagem:', { remoteJid, message: message.substring(0, 50) })
 
+    const presenceLoop = startPresenceLoop({
+      number: remoteJid,
+      presence: 'composing',
+      delay: 3500,
+      intervalMs: 2200,
+      maxIntervalMs: 7000,
+      backoffFactor: 1.6,
+      alternateAvailable: true,
+      availableDelayMs: 600
+    })
+
+    try {
+      await sendChatPresenceWithPulse({
+        number: remoteJid,
+        presence: 'composing',
+        delay: 3500,
+        pulses: 2,
+        intervalMs: 900
+      })
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    } catch (presenceError) {
+      console.warn('⚠️ Não foi possível enviar presença (digitando):', presenceError)
+    }
+
     const bodyPayload: Record<string, unknown> = {
       number: remoteJid,
       text: message,
@@ -59,22 +90,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'apikey': EVOLUTION_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(bodyPayload)
-    })
+    let data: any
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('❌ Erro da Evolution API:', error)
-      throw new Error(`Erro ao enviar mensagem: ${response.statusText}`)
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'apikey': EVOLUTION_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyPayload)
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        console.error('❌ Erro da Evolution API:', error)
+        throw new Error(`Erro ao enviar mensagem: ${response.statusText}`)
+      }
+
+      data = await response.json()
+      console.log('✅ [/api/whatsapp/send] Resposta Evolution:', data)
+    } finally {
+      presenceLoop.stop()
     }
-
-    const data = await response.json()
     console.log('✅ Mensagem enviada com sucesso:', data)
 
     // ================================================================
@@ -87,8 +125,8 @@ export async function POST(request: NextRequest) {
       const messageStatus = data.status ? mapEvolutionStatus(data.status) : 'sent'
       
       const savedMessage = await upsertWhatsAppMessage({
-        message_id: data.key.id,
-        remote_jid: data.key.remoteJid,
+        message_id: data.key?.id || `fallback-${Date.now()}`,
+        remote_jid: data.key?.remoteJid || remoteJid,
         content: message,
         message_type: 'text',
         from_me: true,  // ← FORÇAR TRUE para mensagens enviadas

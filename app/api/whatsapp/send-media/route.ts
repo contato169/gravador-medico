@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { upsertWhatsAppMessage } from '@/lib/whatsapp-db'
+import { sendChatPresenceWithPulse, startPresenceLoop } from '@/lib/whatsapp-presence'
 
 function inferMediaType(mimetype: string | undefined) {
   if (!mimetype) return 'document'
@@ -21,6 +22,14 @@ export async function POST(request: NextRequest) {
     const caption = formData.get('caption')
     const mediatypeInput = formData.get('mediatype')
     const mimetypeInput = formData.get('mimetype')
+
+    console.log('🧩 [/api/whatsapp/send-media] Payload:', {
+      remoteJid,
+      hasFile: file instanceof File,
+      caption: typeof caption === 'string' ? caption.slice(0, 120) : caption,
+      mediatypeInput,
+      mimetypeInput
+    })
 
     if (!remoteJid || typeof remoteJid !== 'string') {
       return NextResponse.json(
@@ -54,6 +63,30 @@ export async function POST(request: NextRequest) {
 
     const url = `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE_NAME}`
 
+    const presenceLoop = startPresenceLoop({
+      number: remoteJid,
+      presence: 'composing',
+      delay: 3500,
+      intervalMs: 2200,
+      maxIntervalMs: 7000,
+      backoffFactor: 1.6,
+      alternateAvailable: true,
+      availableDelayMs: 600
+    })
+
+    try {
+      await sendChatPresenceWithPulse({
+        number: remoteJid,
+        presence: 'composing',
+        delay: 3500,
+        pulses: 2,
+        intervalMs: 900
+      })
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    } catch (presenceError) {
+      console.warn('⚠️ Não foi possível enviar presença (digitando):', presenceError)
+    }
+
     const payload: Record<string, unknown> = {
       number: remoteJid,
       mediatype,
@@ -66,22 +99,29 @@ export async function POST(request: NextRequest) {
       payload.caption = caption.trim()
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        apikey: EVOLUTION_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
+    let data: any
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('❌ Erro da Evolution API:', error)
-      throw new Error(`Erro ao enviar midia: ${response.statusText}`)
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          apikey: EVOLUTION_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        console.error('❌ Erro da Evolution API:', error)
+        throw new Error(`Erro ao enviar midia: ${response.statusText}`)
+      }
+
+      data = await response.json()
+      console.log('✅ [/api/whatsapp/send-media] Resposta Evolution:', data)
+    } finally {
+      presenceLoop.stop()
     }
-
-    const data = await response.json()
 
     try {
       const messageTimestamp = data?.messageTimestamp

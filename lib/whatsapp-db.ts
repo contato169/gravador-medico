@@ -20,6 +20,19 @@ import type {
  */
 export async function getWhatsAppConversations(): Promise<WhatsAppConversation[]> {
   console.log('🔍 [getWhatsAppConversations] Buscando conversas...')
+
+  if (typeof window !== 'undefined') {
+    try {
+      const response = await fetch('/api/whatsapp/conversations')
+      if (!response.ok) {
+        throw new Error('Falha ao buscar conversas')
+      }
+      const payload = await response.json()
+      return payload.conversations || []
+    } catch (error) {
+      console.warn('⚠️ Falha ao buscar conversas via API:', error)
+    }
+  }
   
   const { data, error } = await supabaseAdmin
     .from('whatsapp_conversations')
@@ -130,16 +143,53 @@ export async function markConversationAsRead(remoteJid: string): Promise<void> {
  */
 export async function getWhatsAppMessages(
   remoteJid: string,
-  limit = 100
+  limit = 100,
+  before?: string
 ): Promise<WhatsAppMessage[]> {
   console.log('🔍 [getWhatsAppMessages] Buscando mensagens para:', remoteJid)
+
+  if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams({
+        remoteJid,
+        limit: String(limit)
+      })
+
+      if (before) {
+        params.set('before', before)
+      }
+      const response = await fetch(`/api/whatsapp/messages?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Falha ao buscar mensagens')
+      }
+      const payload = await response.json()
+      const ordered = payload.messages || []
+      console.log('🔍 [getWhatsAppMessages] Resultado (API):', {
+        total: ordered.length,
+        fromMe: ordered.filter((m: WhatsAppMessage) => m.from_me).length,
+        fromThem: ordered.filter((m: WhatsAppMessage) => !m.from_me).length,
+        error: null,
+        firstMessage: ordered[0],
+        lastMessage: ordered[ordered.length - 1]
+      })
+      return ordered
+    } catch (error) {
+      console.warn('⚠️ Falha ao buscar mensagens via API:', error)
+    }
+  }
   
-  const { data, error } = await supabaseAdmin
+  const query = supabaseAdmin
     .from('whatsapp_messages')
     .select('*')
     .eq('remote_jid', remoteJid)
     .order('timestamp', { ascending: false })
     .limit(limit)
+
+  if (before) {
+    query.lt('timestamp', before)
+  }
+
+  const { data, error } = await query
 
   const ordered = (data || []).slice().reverse()
 
@@ -252,7 +302,7 @@ export async function updateWhatsAppMessageContent(input: {
   media_url?: string | null
   caption?: string | null
 }): Promise<WhatsAppMessage> {
-  const updates: Partial<WhatsAppMessage> = {}
+  const updates: Record<string, unknown> = {}
 
   if (input.content !== undefined) updates.content = input.content
   if (input.message_type !== undefined) updates.message_type = input.message_type
@@ -405,6 +455,19 @@ export async function bulkInsertMessages(messages: CreateMessageInput[]): Promis
  * Retorna estatísticas do inbox
  */
 export async function getWhatsAppStats() {
+  if (typeof window !== 'undefined') {
+    try {
+      const response = await fetch('/api/whatsapp/stats')
+      if (!response.ok) {
+        throw new Error('Falha ao buscar stats')
+      }
+      const payload = await response.json()
+      return payload.stats || { totalContacts: 0, totalMessages: 0, totalUnread: 0 }
+    } catch (error) {
+      console.warn('⚠️ Falha ao buscar stats via API:', error)
+    }
+  }
+
   const [contactsResult, messagesResult, unreadResult] = await Promise.all([
     supabaseAdmin
       .from('whatsapp_contacts')

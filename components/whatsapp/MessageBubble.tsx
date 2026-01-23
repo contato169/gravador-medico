@@ -131,28 +131,26 @@ function useResolvedMediaUrl(message: WhatsAppMessage, enabled: boolean) {
 }
 
 export default function MessageBubble({ message, onDelete, onEdit, onReply }: MessageBubbleProps) {
-  const rawFromMeValue = message?.raw_payload?.key?.fromMe as
-    | boolean
-    | string
-    | number
-    | undefined
-    | null
-
-  const rawFromMeNormalized =
-    rawFromMeValue === true ||
-    rawFromMeValue === 'true' ||
-    rawFromMeValue === 1 ||
-    rawFromMeValue === '1'
-
+  // ✅ SEMPRE usar a coluna from_me (confiável), NUNCA o raw_payload
   const fromMeValue = message.from_me as unknown as boolean | string | number
-  const fromMeNormalized =
+  const isFromMe =
     fromMeValue === true ||
     fromMeValue === 'true' ||
     fromMeValue === 1 ||
     fromMeValue === '1'
-
-  const hasRawFromMe = rawFromMeValue !== undefined && rawFromMeValue !== null
-  const isFromMe = hasRawFromMe ? rawFromMeNormalized : fromMeNormalized
+  
+  // Debug - remover depois
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 [MessageBubble]', {
+      id: message.id?.substring(0, 8),
+      content: message.content?.substring(0, 30),
+      from_me_raw: message.from_me,
+      from_me_type: typeof message.from_me,
+      isFromMe,
+      side: isFromMe ? 'DIREITA (você)' : 'ESQUERDA (cliente)'
+    })
+  }
+  
   const isDeleted = message.content === '[Mensagem apagada]'
   const canEdit =
     isFromMe &&

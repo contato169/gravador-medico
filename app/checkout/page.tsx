@@ -226,32 +226,6 @@ export default function CheckoutPage() {
     'ADMGM': { type: 'fixed', value: 35 }
   }
 
-  // Aplicar cupom
-  const applyCupom = () => {
-    const cupomUpper = cupomInput.toUpperCase().trim()
-    
-    if (!cupomUpper) {
-      setCupomError("Digite um cupom")
-      return
-    }
-    
-    if (CUPONS[cupomUpper]) {
-      setAppliedCupom(cupomUpper)
-      setCupomError("")
-      setCupomInput("")
-    } else {
-      setCupomError("Cupom inválido")
-      setAppliedCupom(null)
-    }
-  }
-
-  // Remover cupom
-  const removeCupom = () => {
-    setAppliedCupom(null)
-    setCupomInput("")
-    setCupomError("")
-  }
-
   // Calcular desconto do cupom COM PROTEÇÃO CONTRA VALORES NEGATIVOS
   const calculateCupomDiscount = (subtotal: number) => {
     if (!appliedCupom || !CUPONS[appliedCupom]) return 0
@@ -364,6 +338,7 @@ export default function CheckoutPage() {
   const subtotal = basePrice + orderBumpsTotal
   const cupomDiscount = calculateCupomDiscount(subtotal)
   const total = subtotal - cupomDiscount // Aplica desconto do cupom
+  const MIN_CREDIT_TOTAL = 5.0
   
   // Calcula parcelas com JUROS SIMPLES - Lógica Appmax
   // Taxa: 2.49% ao mês (0.0249)
@@ -411,6 +386,28 @@ export default function CheckoutPage() {
   
   const parcelasDisponiveis = calculateInstallments()
   const maxInstallments = parcelasDisponiveis.length
+  const creditAllowed = total >= MIN_CREDIT_TOTAL && parcelasDisponiveis.length > 0
+
+  useEffect(() => {
+    if (appliedCupom && paymentMethod === 'credit' && total < MIN_CREDIT_TOTAL) {
+      setAppliedCupom(null)
+      setCupomError('Cupom reduz o total abaixo do mínimo para cartão (R$ 5,00). Use PIX ou ajuste o pedido.')
+    }
+  }, [appliedCupom, paymentMethod, total])
+
+  useEffect(() => {
+    if (!creditAllowed && paymentMethod === 'credit') {
+      setPaymentMethod('pix')
+    }
+  }, [creditAllowed, paymentMethod])
+
+  useEffect(() => {
+    if (parcelasDisponiveis.length === 0) return
+    const hasCurrent = parcelasDisponiveis.some((parcela) => parcela.numero === cardData.installments)
+    if (!hasCurrent) {
+      setCardData((prev) => ({ ...prev, installments: parcelasDisponiveis[0].numero }))
+    }
+  }, [parcelasDisponiveis, cardData.installments])
 
   // Validações
   const isStep1Valid = () => {
@@ -419,7 +416,72 @@ export default function CheckoutPage() {
 
   const isStep3Valid = () => {
     if (paymentMethod === "pix") return true
-    return cardData.number && cardData.holderName && cardData.expMonth && cardData.expYear && cardData.cvv
+    return creditAllowed && cardData.number && cardData.holderName && cardData.expMonth && cardData.expYear && cardData.cvv
+  }
+
+  const formatPaymentError = (error: any) => {
+    const rawMessage = typeof error === 'string' ? error : error?.message || ''
+    let message = rawMessage
+
+    const jsonStart = rawMessage.indexOf('{')
+    if (jsonStart >= 0) {
+      try {
+        const parsed = JSON.parse(rawMessage.slice(jsonStart))
+        message = parsed.text || parsed.error || parsed.message || rawMessage
+      } catch {
+        message = rawMessage
+      }
+    }
+
+    const normalized = message.toLowerCase()
+
+    if (normalized.includes('parcela') && normalized.includes('inferior') && normalized.includes('5')) {
+      return 'O valor mínimo por parcela no cartão é R$ 5,00. Use PIX ou ajuste o pedido.'
+    }
+
+    if (normalized.includes('valor mínimo') && normalized.includes('cartão')) {
+      return 'Para pagamento no cartão, o valor mínimo por parcela é R$ 5,00. Use PIX ou ajuste o pedido.'
+    }
+
+    if (normalized.includes('cpf inválido')) {
+      return 'CPF inválido. Verifique o número e tente novamente.'
+    }
+
+    if (normalized.includes('dados obrigatórios')) {
+      return 'Preencha nome, e-mail e CPF para continuar.'
+    }
+
+    if (normalized.includes('token') && normalized.includes('appmax')) {
+      return 'Configuração do pagamento incompleta. Verifique as credenciais do gateway.'
+    }
+
+    return message || 'Erro ao processar pagamento. Tente novamente.'
+  }
+
+  // Aplicar cupom
+  const applyCupom = () => {
+    const cupomUpper = cupomInput.toUpperCase().trim()
+    
+    if (!cupomUpper) {
+      setCupomError("Digite um cupom")
+      return
+    }
+    
+    if (CUPONS[cupomUpper]) {
+      setAppliedCupom(cupomUpper)
+      setCupomError("")
+      setCupomInput("")
+    } else {
+      setCupomError("Cupom inválido")
+      setAppliedCupom(null)
+    }
+  }
+
+  // Remover cupom
+  const removeCupom = () => {
+    setAppliedCupom(null)
+    setCupomInput("")
+    setCupomError("")
   }
 
   // Formatação
@@ -500,6 +562,9 @@ export default function CheckoutPage() {
     setLoading(true)
     
     try {
+      if (paymentMethod === 'credit' && !creditAllowed) {
+        throw new Error('Para pagamento no cartão, o valor mínimo por parcela é R$ 5,00. Escolha PIX ou ajuste o pedido.')
+      }
       // Mapeia os índices dos order bumps selecionados para os IDs dos produtos
       const selectedBumpProducts = selectedOrderBumps.map(index => ({
         product_id: orderBumps[index].id,
@@ -590,7 +655,7 @@ export default function CheckoutPage() {
       }
     } catch (error: any) {
       console.error('Erro no checkout:', error)
-      alert(error.message || 'Erro ao processar pagamento')
+      alert(formatPaymentError(error))
       setLoading(false)
     }
   }
@@ -950,16 +1015,22 @@ export default function CheckoutPage() {
                     {/* Seletor de Método */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       <button
-                        onClick={() => setPaymentMethod("credit")}
+                        onClick={() => creditAllowed && setPaymentMethod("credit")}
+                        disabled={!creditAllowed}
                         className={`p-6 rounded-xl border-2 transition-all ${
                           paymentMethod === "credit"
                             ? "border-brand-500 bg-brand-50 shadow-lg"
                             : "border-gray-200 hover:border-brand-300"
-                        }`}
+                        } ${!creditAllowed ? 'opacity-60 cursor-not-allowed' : ''}`}
                       >
                         <CreditCard className="w-8 h-8 mx-auto mb-2 text-brand-600" />
                         <div className="text-sm font-bold text-gray-900">Cartão de Crédito</div>
                         <div className="text-xs text-gray-600 mt-1">Em até 12x sem juros</div>
+                        {!creditAllowed && (
+                          <div className="text-xs text-red-600 mt-2 font-semibold">
+                            Valor mínimo R$ 5,00
+                          </div>
+                        )}
                       </button>
                       
                       <button
@@ -1079,18 +1150,28 @@ export default function CheckoutPage() {
                             value={cardData.installments}
                             onChange={(e) => setCardData({ ...cardData, installments: parseInt(e.target.value) })}
                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none transition-colors bg-white"
+                            disabled={!creditAllowed}
                             required
                           >
-                            {parcelasDisponiveis.map((parcela) => (
-                              <option key={parcela.numero} value={parcela.numero}>
-                                {parcela.numero}x de R$ {parcela.valorParcela.toFixed(2).replace('.', ',')}
-                                {parcela.numero === 1 ? ' sem juros' : ` (Total: R$ ${parcela.valorTotal.toFixed(2).replace('.', ',')})`}
-                              </option>
-                            ))}
+                            {parcelasDisponiveis.length > 0 ? (
+                              parcelasDisponiveis.map((parcela) => (
+                                <option key={parcela.numero} value={parcela.numero}>
+                                  {parcela.numero}x de R$ {parcela.valorParcela.toFixed(2).replace('.', ',')}
+                                  {parcela.numero === 1 ? ' sem juros' : ` (Total: R$ ${parcela.valorTotal.toFixed(2).replace('.', ',')})`}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="">Sem opções</option>
+                            )}
                           </select>
                           <p className="text-xs text-gray-500 mt-1">
                             Parcelamento em até {maxInstallments}x • Taxa: 2,49% a.m.
                           </p>
+                          {!creditAllowed && (
+                            <p className="text-xs text-red-600 mt-2 font-semibold">
+                              O valor mínimo por parcela é R$ 5,00. Use PIX ou ajuste o pedido.
+                            </p>
+                          )}
                         </div>
                       </motion.div>
                     )}

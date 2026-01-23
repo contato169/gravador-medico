@@ -102,6 +102,60 @@ curl -X POST http://localhost:3000/api/whatsapp/sync \
 
 ---
 
+## 🟢 Presença e Privacidade
+
+### Digitando / Gravando
+
+```bash
+curl -X POST http://localhost:3000/api/whatsapp/presence \
+  -H "Content-Type: application/json" \
+  -d '{
+    "number": "5521999999999",
+    "presence": "composing",
+    "delay": 1200
+  }'
+
+curl -X POST http://localhost:3000/api/whatsapp/presence \
+  -H "Content-Type: application/json" \
+  -d '{
+    "number": "5521999999999",
+    "presence": "recording",
+    "delay": 1200
+  }'
+```
+
+### Always Online
+
+```bash
+curl -X POST http://localhost:3000/api/whatsapp/settings/always-online \
+  -H "Content-Type: application/json" \
+  -d '{ "alwaysOnline": true }'
+```
+
+### Presença global da instância
+
+```bash
+curl -X POST http://localhost:3000/api/whatsapp/instance-presence \
+  -H "Content-Type: application/json" \
+  -d '{ "presence": "available" }'
+```
+
+### Privacidade (visto por último, foto, status)
+
+```bash
+curl -X POST http://localhost:3000/api/whatsapp/privacy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "last_seen": "all",
+    "online": "all",
+    "profile_photo": "all",
+    "status": "all",
+    "readreceipts": "all"
+  }'
+```
+
+---
+
 ## 🌐 Webhook
 
 ### Testar webhook localmente (ngrok)

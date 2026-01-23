@@ -413,10 +413,15 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()
 
-    const event = payload?.event
+    // Aceitar tanto "event" quanto "type" (n8n pode enviar "type")
+    const event = payload?.event || payload?.type
     const isUpdateEvent = event === 'messages.update'
 
     if (event !== 'messages.upsert' && event !== 'messages.update') {
+      console.log('⚠️ Webhook ignorado - evento inválido:', {
+        event,
+        receivedPayload: payload
+      })
       return NextResponse.json({ 
         success: true, 
         message: 'Evento ignorado (nao e messages.upsert/update)' 

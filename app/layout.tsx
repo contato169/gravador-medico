@@ -3,6 +3,7 @@ import "./globals.css"
 import { Suspense } from 'react'
 import { headers } from 'next/headers' // ✅ Importar headers
 import AnalyticsTracker from '@/components/AnalyticsTracker'
+import WhatsAppFloating from '@/components/WhatsAppFloating'
 import { ToastProvider } from '@/components/ui/toast' // ✅ Provider para notificações
 import { Toaster } from 'sonner' // ✅ Toast visual
 import { Plus_Jakarta_Sans } from 'next/font/google'
@@ -126,6 +127,9 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <AnalyticsTracker city={city} country={country} region={region} />
           </Suspense>
+          
+          {/* WhatsApp Floating Button */}
+          <WhatsAppFloating />
           
           {children}
         </ToastProvider>

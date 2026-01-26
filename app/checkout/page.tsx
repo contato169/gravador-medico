@@ -227,6 +227,16 @@ export default function CheckoutPage() {
 
   // Order Bumps
   const orderBumps = [
+    {
+      id: "32989503", // Implementação Assistida
+      title: "🚀 Implementação Assistida",
+      description: "Instalação completa do sistema + Configuração personalizada + 1 hora de treinamento individual",
+      originalPrice: 297,
+      price: 97,
+      discount: 67,
+      highlight: "ECONOMIZE TEMPO",
+      badge: "EXCLUSIVO",
+    },
     // TEMPORARIAMENTE OCULTOS - Aguardando criação dos produtos
     // {
     //   id: "32989468", // Conteúdo Infinito Instagram
@@ -239,25 +249,15 @@ export default function CheckoutPage() {
     //   badge: "LIMITADO",
     // },
     // {
-    //   id: "32989503", // Implementação Assistida
-    //   title: "📚 Implementação Assistida",
-    //   description: "Instalação completa do sistema + Configuração personalizada + 1 hora de treinamento individual",
-    //   originalPrice: 297,
-    //   price: 97,
-    //   discount: 67,
-    //   highlight: "ECONOMIZE TEMPO",
-    //   badge: "EXCLUSIVO",
+    //   id: "32989520", // Análise Inteligente
+    //   title: "⚡ Análise Inteligente de Consultas",
+    //   description: "IA que analisa seus atendimentos + Sugestões de melhoria + Relatórios automáticos de performance",
+    //   originalPrice: 197,
+    //   price: 39.90,
+    //   discount: 80,
+    //   highlight: "TECNOLOGIA IA",
+    //   badge: "PREMIUM",
     // },
-    {
-      id: "32989520", // Análise Inteligente
-      title: "⚡ Análise Inteligente de Consultas",
-      description: "IA que analisa seus atendimentos + Sugestões de melhoria + Relatórios automáticos de performance",
-      originalPrice: 197,
-      price: 39.90,
-      discount: 80,
-      highlight: "TECNOLOGIA IA",
-      badge: "PREMIUM",
-    },
   ]
 
   // Depoimentos

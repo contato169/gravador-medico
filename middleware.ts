@@ -136,34 +136,51 @@ async function checkAuth(request: NextRequest): Promise<{
   isAdmin?: boolean;
 }> {
   try {
-    const token = request.cookies.get('sb-access-token')?.value;
+    // Procurar pelo cookie correto (auth_token)
+    const token = request.cookies.get('auth_token')?.value;
     
     if (!token) {
+      console.log('🔒 Middleware: Cookie auth_token não encontrado');
       return { authenticated: false };
     }
     
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()!;
+    console.log('🔑 Middleware: Cookie auth_token encontrado');
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    });
+    // Verificar JWT customizado (não usar Supabase Auth aqui)
+    const jwt = require('jsonwebtoken');
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
     
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error || !user) {
+    try {
+      const decoded = jwt.verify(token, jwtSecret) as any;
+      console.log('✅ Middleware: Token JWT válido', { email: decoded.email });
+      
+      // Verificar se usuário é admin no Supabase
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()!;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()!;
+      
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', decoded.email)
+        .single();
+      
+      if (error || !user) {
+        console.log('❌ Middleware: Usuário não encontrado no banco');
+        return { authenticated: false };
+      }
+      
+      const isAdmin = user.role === 'admin';
+      console.log('👤 Middleware: Usuário autenticado', { email: user.email, isAdmin });
+      
+      return { authenticated: true, user, isAdmin };
+    } catch (jwtError) {
+      console.error('❌ Middleware: Token JWT inválido:', jwtError);
       return { authenticated: false };
     }
-    
-    const isAdmin = user.user_metadata?.role === 'admin';
-    
-    return { authenticated: true, user, isAdmin };
   } catch (error) {
-    console.error('Auth check failed:', error);
+    console.error('❌ Middleware: Erro na verificação de auth:', error);
     return { authenticated: false };
   }
 }

@@ -9,6 +9,7 @@ import RealtimeFeed from '@/components/dashboard/RealtimeFeed'
 import { RealtimeVisitors } from '@/components/dashboard/RealtimeVisitors'
 import { FraudAnalysisCard } from '@/components/dashboard/FraudAnalysisCard'
 import { SyncAppmaxButton } from '@/components/dashboard/SyncAppmaxButton'
+import { SyncMercadoPagoButton } from '@/components/dashboard/SyncMercadoPagoButton'
 import GatewayStatsCard from '@/components/dashboard/GatewayStatsCard'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { RefreshCw, Download, MousePointerClick, Link2, Zap, TrendingUp, ArrowRight } from 'lucide-react'
@@ -139,6 +140,7 @@ Relatório gerado automaticamente pelo Gravador Médico
           <p className="text-gray-400 mt-1">Acompanhe suas métricas em tempo real</p>
         </div>
         <div className="flex gap-3 flex-wrap">
+          <SyncMercadoPagoButton />
           <SyncAppmaxButton />
           <RealtimeVisitors />
           <button

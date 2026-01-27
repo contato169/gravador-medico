@@ -2,6 +2,7 @@
 // 🔔 WEBHOOK MERCADO PAGO V3 - ENTERPRISE
 // ========================================
 // Validação HMAC | Processamento Assíncrono | Provisionamento
+// ATUALIZADO: Agora salva vendas na tabela `sales` para dashboard
 // ========================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,6 +10,25 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { MercadoPagoWebhookSchema } from '@/lib/validators/checkout';
 import { createAndSaveRedirectUrl } from '@/lib/redirect-helper';
+
+// =====================================================
+// 📊 CONSTANTES E MAPEAMENTOS
+// =====================================================
+const SUCCESS_STATUSES = ['approved', 'authorized'];
+const PENDING_STATUSES = ['pending', 'in_process', 'in_mediation'];
+const FAILED_STATUSES = ['rejected', 'cancelled', 'refunded', 'charged_back'];
+
+const MP_STATUS_MAP: Record<string, string> = {
+  'approved': 'paid',
+  'authorized': 'approved',
+  'pending': 'pending',
+  'in_process': 'pending',
+  'in_mediation': 'pending',
+  'rejected': 'refused',
+  'cancelled': 'cancelled',
+  'refunded': 'refunded',
+  'charged_back': 'chargeback'
+};
 
 // =====================================================
 // 🔐 VALIDAÇÃO DE ASSINATURA (HMAC SHA-256)
@@ -238,9 +258,9 @@ export async function POST(request: NextRequest) {
     }
     
     // ==================================================
-    // 5️⃣ PROCESSAR APENAS PAYMENTS APROVADOS
+    // 5️⃣ PROCESSAR PAYMENTS
     // ==================================================
-    if (payload.type !== 'payment' || payload.action !== 'payment.updated') {
+    if (payload.type !== 'payment') {
       // Marcar como processado (não precisa de ação)
       if (webhookLog) {
         await supabaseAdmin
@@ -253,38 +273,215 @@ export async function POST(request: NextRequest) {
     }
     
     // ==================================================
-    // 6️⃣ BUSCAR DETALHES DO PAYMENT
+    // 6️⃣ BUSCAR DETALHES DO PAYMENT NA API DO MP
     // ==================================================
-    // Buscar pedido pelo external_reference ou gateway_order_id
+    const paymentId = payload.data.id;
+    let paymentDetails: any = null;
+    
+    try {
+      const mpAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+      if (mpAccessToken) {
+        const mpResponse = await fetch(
+          `https://api.mercadopago.com/v1/payments/${paymentId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${mpAccessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        if (mpResponse.ok) {
+          paymentDetails = await mpResponse.json();
+          console.log(`[MP Webhook] Payment ${paymentId} status: ${paymentDetails.status}`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar detalhes do pagamento:', error);
+    }
+    
+    // ==================================================
+    // 6.1️⃣ BUSCAR PEDIDO PELO EXTERNAL_REFERENCE
+    // ==================================================
+    const externalReference = paymentDetails?.external_reference || payload.data.id;
+    
     const { data: order } = await supabaseAdmin
       .from('orders')
       .select('*')
-      .eq('gateway_order_id', payload.data.id)
-      .single();
+      .or(`gateway_order_id.eq.${paymentId},external_reference.eq.${externalReference}`)
+      .maybeSingle();
     
-    if (!order) {
-      console.warn(`Order not found for payment ${payload.data.id}`);
+    // ==================================================
+    // 7️⃣ CRIAR/ATUALIZAR CUSTOMER
+    // ==================================================
+    let customerId: string | null = null;
+    const customerEmail = paymentDetails?.payer?.email || order?.customer_email;
+    const customerName = paymentDetails?.payer?.first_name 
+      ? `${paymentDetails.payer.first_name} ${paymentDetails.payer.last_name || ''}`
+      : order?.customer_name;
+    const customerPhone = paymentDetails?.payer?.phone?.number || order?.customer_phone;
+    
+    if (customerEmail) {
+      try {
+        const { data: customerRow } = await supabaseAdmin
+          .from('customers')
+          .upsert({
+            email: customerEmail,
+            name: customerName || customerEmail.split('@')[0],
+            phone: customerPhone
+          }, {
+            onConflict: 'email',
+            ignoreDuplicates: false
+          })
+          .select('id')
+          .single();
+        
+        customerId = customerRow?.id || null;
+      } catch (error) {
+        console.warn('⚠️ Erro ao upsert customer:', error);
+      }
+    }
+    
+    // ==================================================
+    // 8️⃣ DETERMINAR STATUS E SALVAR NA TABELA SALES
+    // ==================================================
+    const mpStatus = paymentDetails?.status || 'pending';
+    const normalizedStatus = MP_STATUS_MAP[mpStatus] || mpStatus;
+    const isSuccess = SUCCESS_STATUSES.includes(mpStatus);
+    const totalAmount = paymentDetails?.transaction_amount || order?.total_amount || 0;
+    const paymentMethod = paymentDetails?.payment_method_id || paymentDetails?.payment_type_id || 'credit_card';
+    
+    const now = new Date().toISOString();
+    
+    // ✅ SALVAR/ATUALIZAR NA TABELA SALES (CRÍTICO PARA O DASHBOARD!)
+    const salePayload: Record<string, any> = {
+      mercadopago_payment_id: paymentId,
+      customer_id: customerId,
+      customer_name: customerName || 'Cliente MP',
+      customer_email: customerEmail,
+      customer_phone: customerPhone,
+      total_amount: totalAmount,
+      subtotal: totalAmount,
+      order_status: normalizedStatus,
+      payment_method: paymentMethod,
+      payment_gateway: 'mercadopago', // ⬅️ CRÍTICO: Identifica como MP no dashboard
+      status: normalizedStatus,
+      external_reference: externalReference,
+      updated_at: now
+    };
+    
+    // Adicionar campos de tracking se disponíveis
+    if (order?.utm_source) salePayload.utm_source = order.utm_source;
+    if (order?.utm_medium) salePayload.utm_medium = order.utm_medium;
+    if (order?.utm_campaign) salePayload.utm_campaign = order.utm_campaign;
+    
+    let saleId: string | null = null;
+    
+    try {
+      // Tentar atualizar pelo mercadopago_payment_id
+      const { data: existingSale } = await supabaseAdmin
+        .from('sales')
+        .select('id')
+        .eq('mercadopago_payment_id', paymentId)
+        .maybeSingle();
       
+      if (existingSale) {
+        // Atualizar venda existente
+        const { data: updatedSale } = await supabaseAdmin
+          .from('sales')
+          .update(salePayload)
+          .eq('id', existingSale.id)
+          .select('id')
+          .single();
+        
+        saleId = updatedSale?.id || existingSale.id;
+        console.log(`[MP Webhook] ✅ Sale atualizada: ${saleId}`);
+      } else {
+        // Criar nova venda
+        salePayload.created_at = now;
+        
+        const { data: newSale, error: saleError } = await supabaseAdmin
+          .from('sales')
+          .insert(salePayload)
+          .select('id')
+          .single();
+        
+        if (saleError) {
+          console.error('❌ Erro ao criar sale:', saleError);
+          // Tentar sem campos opcionais
+          delete salePayload.utm_source;
+          delete salePayload.utm_medium;
+          delete salePayload.utm_campaign;
+          
+          const { data: fallbackSale } = await supabaseAdmin
+            .from('sales')
+            .insert(salePayload)
+            .select('id')
+            .single();
+          
+          saleId = fallbackSale?.id || null;
+        } else {
+          saleId = newSale?.id || null;
+        }
+        
+        if (saleId) {
+          console.log(`[MP Webhook] ✅ Nova sale criada: ${saleId}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar sale:', error);
+    }
+    
+    // ==================================================
+    // 9️⃣ ATUALIZAR CHECKOUT_ATTEMPTS (SE EXISTIR)
+    // ==================================================
+    if (customerEmail) {
+      try {
+        await supabaseAdmin
+          .from('checkout_attempts')
+          .update({
+            status: normalizedStatus,
+            sale_id: saleId,
+            converted_at: isSuccess ? now : null,
+            updated_at: now
+          })
+          .eq('customer_email', customerEmail)
+          .in('status', ['pending', 'processing', 'fraud_analysis'])
+          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      } catch (error) {
+        console.warn('⚠️ Erro ao atualizar checkout_attempts:', error);
+      }
+    }
+    
+    // ==================================================
+    // 🔟 VERIFICAR SE JÁ FOI PROCESSADO
+    // ==================================================
+    if (!isSuccess) {
+      // Para pagamentos não aprovados, apenas salvar e retornar
       if (webhookLog) {
         await supabaseAdmin
           .from('webhook_logs')
-          .update({
-            processed: true,
-            processed_at: new Date().toISOString(),
-            error_message: 'Order not found',
+          .update({ 
+            processed: true, 
+            processed_at: now,
+            error_message: `Status: ${mpStatus}`
           })
           .eq('id', webhookLog.id);
       }
       
-      return NextResponse.json({ received: true });
+      return NextResponse.json({ 
+        received: true, 
+        status: normalizedStatus,
+        sale_id: saleId 
+      });
     }
     
-    // Se já foi processado (paid), ignorar
-    if (order.status === 'paid') {
+    // Verificar se order já foi processado
+    if (order?.status === 'paid') {
       if (webhookLog) {
         await supabaseAdmin
           .from('webhook_logs')
-          .update({ processed: true, processed_at: new Date().toISOString() })
+          .update({ processed: true, processed_at: now })
           .eq('id', webhookLog.id);
       }
       
@@ -292,53 +489,61 @@ export async function POST(request: NextRequest) {
     }
     
     // ==================================================
-    // 7️⃣ PROVISIONAMENTO AUTOMÁTICO
+    // 1️⃣1️⃣ PROVISIONAMENTO AUTOMÁTICO (SE CONFIGURADO)
     // ==================================================
-    console.log(`[${order.id}] Iniciando provisionamento...`);
+    let provisionResult: { success: boolean; credentials?: any; error?: string } = { 
+      success: false, 
+      credentials: undefined, 
+      error: undefined 
+    };
     
-    const provisionResult = await provisionLovableAccount(
-      order.id,
-      order.customer_email,
-      order.customer_name || 'Cliente'
-    );
+    if (customerEmail && customerName && process.env.LOVABLE_API_URL) {
+      console.log(`[${saleId || paymentId}] Iniciando provisionamento...`);
+      
+      provisionResult = await provisionLovableAccount(
+        saleId || paymentId,
+        customerEmail,
+        customerName
+      );
+    }
     
-    if (provisionResult.success) {
+    if (provisionResult.success && provisionResult.credentials) {
       // Enviar email com credenciais
       const emailSent = await sendWelcomeEmail(
-        order.customer_email,
+        customerEmail,
         provisionResult.credentials
       );
       
       await supabaseAdmin.from('integration_logs').insert({
-        order_id: order.id,
+        order_id: saleId || paymentId,
         action: 'email_sent',
         status: emailSent ? 'success' : 'error',
         details: { email_sent: emailSent },
       });
       
-      console.log(`[${order.id}] ✅ Provisionamento completo`);
-    } else {
-      console.error(`[${order.id}] ❌ Falha no provisionamento: ${provisionResult.error}`);
+      console.log(`[${saleId || paymentId}] ✅ Provisionamento completo`);
+    } else if (provisionResult.error) {
+      console.error(`[${saleId || paymentId}] ❌ Falha no provisionamento: ${provisionResult.error}`);
     }
     
     // ==================================================
-    // 8️⃣ CRIAR URL DE REDIRECIONAMENTO
+    // 1️⃣2️⃣ CRIAR URL DE REDIRECIONAMENTO
     // ==================================================
     const redirectUrl = await createAndSaveRedirectUrl({
-      orderId: order.id,
-      customerEmail: order.customer_email,
-      customerName: order.customer_name || undefined,
-      paymentMethod: order.payment_method || 'credit_card',
-      amount: order.total_amount,
+      orderId: saleId || paymentId,
+      customerEmail: customerEmail || '',
+      customerName: customerName || undefined,
+      paymentMethod: paymentMethod || 'credit_card',
+      amount: totalAmount,
       status: 'paid'
     });
     
     if (redirectUrl) {
-      console.log(`[${order.id}] 🔄 URL de obrigado criada: ${redirectUrl}`);
+      console.log(`[${saleId || paymentId}] 🔄 URL de obrigado criada: ${redirectUrl}`);
     }
     
     // ==================================================
-    // 9️⃣ MARCAR WEBHOOK COMO PROCESSADO
+    // 1️⃣3️⃣ MARCAR WEBHOOK COMO PROCESSADO
     // ==================================================
     if (webhookLog) {
       await supabaseAdmin
@@ -352,7 +557,8 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       received: true,
-      order_id: order.id,
+      sale_id: saleId,
+      payment_id: paymentId,
       provisioned: provisionResult.success,
     });
   } catch (error: any) {

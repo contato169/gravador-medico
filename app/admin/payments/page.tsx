@@ -100,7 +100,7 @@ export default function PaymentsAdminPage() {
           break
       }
 
-      // Busca estatísticas agregadas
+      // Busca estatísticas agregadas diretamente de sales (fonte principal)
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
         .select('*')
@@ -108,29 +108,23 @@ export default function PaymentsAdminPage() {
 
       if (salesError) throw salesError
 
-      // Busca tentativas de pagamento com dados da venda
+      // Busca tentativas de pagamento (sem join que pode falhar)
       const { data: attemptsData, error: attemptsError } = await supabase
         .from('payment_attempts')
-        .select(`
-          *,
-          sale:sales (
-            customer_name,
-            customer_email,
-            amount,
-            order_status,
-            fallback_used
-          )
-        `)
+        .select('*')
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false })
         .limit(50)
 
-      if (attemptsError) throw attemptsError
+      // Ignora erro de attempts, não é crítico
+      if (attemptsError) {
+        console.warn('Aviso: Não foi possível carregar payment_attempts:', attemptsError.message)
+      }
 
-      // Calcula estatísticas
+      // Calcula estatísticas usando total_amount (ou amount como fallback)
       const total_sales = salesData?.length || 0
-      const paid_sales = salesData?.filter(s => s.order_status === 'paid' || s.order_status === 'provisioning' || s.order_status === 'active') || []
-      const total_revenue = paid_sales.reduce((sum, s) => sum + (s.amount || 0), 0)
+      const paid_sales = salesData?.filter(s => s.order_status === 'paid' || s.order_status === 'provisioning' || s.order_status === 'active' || s.order_status === 'approved') || []
+      const total_revenue = paid_sales.reduce((sum, s) => sum + (s.total_amount || s.amount || 0), 0)
       
       const mp_sales = paid_sales.filter(s => s.payment_gateway === 'mercadopago' && !s.fallback_used)
       const appmax_sales = paid_sales.filter(s => s.payment_gateway === 'appmax')
@@ -142,23 +136,40 @@ export default function PaymentsAdminPage() {
         conversion_rate: total_sales > 0 ? (paid_sales.length / total_sales) * 100 : 0,
         
         mp_sales: mp_sales.length,
-        mp_revenue: mp_sales.reduce((sum, s) => sum + s.amount, 0),
-        mp_success_rate: mp_sales.length > 0 ? (mp_sales.length / total_sales) * 100 : 0,
-        mp_avg_ticket: mp_sales.length > 0 ? mp_sales.reduce((sum, s) => sum + s.amount, 0) / mp_sales.length : 0,
+        mp_revenue: mp_sales.reduce((sum, s) => sum + (s.total_amount || s.amount || 0), 0),
+        mp_success_rate: total_sales > 0 ? (mp_sales.length / total_sales) * 100 : 0,
+        mp_avg_ticket: mp_sales.length > 0 ? mp_sales.reduce((sum, s) => sum + (s.total_amount || s.amount || 0), 0) / mp_sales.length : 0,
         
         appmax_sales: appmax_sales.length,
-        appmax_revenue: appmax_sales.reduce((sum, s) => sum + s.amount, 0),
-        appmax_success_rate: appmax_sales.length > 0 ? (appmax_sales.length / total_sales) * 100 : 0,
-        appmax_avg_ticket: appmax_sales.length > 0 ? appmax_sales.reduce((sum, s) => sum + s.amount, 0) / appmax_sales.length : 0,
+        appmax_revenue: appmax_sales.reduce((sum, s) => sum + (s.total_amount || s.amount || 0), 0),
+        appmax_success_rate: total_sales > 0 ? (appmax_sales.length / total_sales) * 100 : 0,
+        appmax_avg_ticket: appmax_sales.length > 0 ? appmax_sales.reduce((sum, s) => sum + (s.total_amount || s.amount || 0), 0) / appmax_sales.length : 0,
         
         fallback_sales: fallback_sales.length,
         fallback_rate: paid_sales.length > 0 ? (fallback_sales.length / paid_sales.length) * 100 : 0,
-        rescued_revenue: fallback_sales.reduce((sum, s) => sum + s.amount, 0),
+        rescued_revenue: fallback_sales.reduce((sum, s) => sum + (s.total_amount || s.amount || 0), 0),
         rescue_rate: mp_sales.length > 0 ? (fallback_sales.length / mp_sales.length) * 100 : 0,
       }
 
+      // Formata attempts com dados de sales (se disponível)
+      const formattedAttempts = (attemptsData || []).map(attempt => {
+        // Tenta encontrar a venda correspondente pelo order_id
+        const relatedSale = salesData?.find(s => s.id === attempt.order_id || s.appmax_order_id === attempt.order_id)
+        return {
+          ...attempt,
+          gateway: attempt.provider,
+          sale: relatedSale ? {
+            customer_name: relatedSale.customer_name,
+            customer_email: relatedSale.customer_email,
+            amount: relatedSale.total_amount || relatedSale.amount,
+            order_status: relatedSale.order_status,
+            fallback_used: relatedSale.fallback_used
+          } : undefined
+        }
+      })
+
       setStats(calculatedStats)
-      setAttempts(attemptsData || [])
+      setAttempts(formattedAttempts)
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {

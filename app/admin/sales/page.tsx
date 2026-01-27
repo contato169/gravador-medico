@@ -200,10 +200,14 @@ export default function SalesPage() {
   const getPaymentMethodIcon = (method: string) => {
     switch (method?.toLowerCase()) {
       case 'pix': return '💠'
-      case 'credit_card':
-      case 'cartao': return '💳'
       case 'boleto': return '📄'
-      default: return '💰'
+      case 'credit_card':
+      case 'cartao':
+      case 'credit':
+      case 'debit_card':
+      case 'debito':
+      case 'card':
+      default: return '�' // Cartão como padrão
     }
   }
 

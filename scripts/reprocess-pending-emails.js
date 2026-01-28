@@ -262,7 +262,7 @@ async function sendWelcomeEmail(params) {
       email_id: data?.id,
       recipient_email: params.to,
       recipient_name: params.customerName,
-      subject: '🎉 Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
+      subject: 'Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
       email_type: 'welcome',
       from_email: 'suporte@gravadormedico.com.br',
       from_name: 'Gravador Médico',
@@ -287,7 +287,7 @@ async function sendWelcomeEmail(params) {
     await supabase.from('email_logs').insert({
       recipient_email: params.to,
       recipient_name: params.customerName,
-      subject: '🎉 Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
+      subject: 'Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
       email_type: 'welcome',
       from_email: 'suporte@gravadormedico.com.br',
       from_name: 'Gravador Médico',

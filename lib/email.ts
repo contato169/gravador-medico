@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { WelcomeEmail } from '@/emails/WelcomeEmail'
+import WelcomeEmail from '@/emails/WelcomeEmail'
 import { supabaseAdmin } from './supabase'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -23,7 +23,7 @@ export async function sendWelcomeEmail(params: SendWelcomeEmailParams) {
     const { data, error } = await resend.emails.send({
       from: 'Gravador Médico <suporte@gravadormedico.com.br>',
       to: params.to,
-      subject: '🎉 Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
+      subject: 'Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
       react: WelcomeEmail({
         customerName: params.customerName,
         userEmail: params.userEmail,
@@ -41,7 +41,7 @@ export async function sendWelcomeEmail(params: SendWelcomeEmailParams) {
       await supabaseAdmin.from('email_logs').insert({
         recipient_email: params.to,
         recipient_name: params.customerName,
-        subject: '🎉 Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
+        subject: 'Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
         email_type: 'welcome',
         from_email: 'suporte@gravadormedico.com.br',
         from_name: 'Gravador Médico',
@@ -67,7 +67,7 @@ export async function sendWelcomeEmail(params: SendWelcomeEmailParams) {
       email_id: data?.id,
       recipient_email: params.to,
       recipient_name: params.customerName,
-      subject: '🎉 Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
+      subject: 'Bem-vindo ao Gravador Médico - Seus Dados de Acesso',
       email_type: 'welcome',
       from_email: 'suporte@gravadormedico.com.br',
       from_name: 'Gravador Médico',

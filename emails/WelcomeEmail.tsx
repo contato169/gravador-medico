@@ -1,4 +1,4 @@
-import * as React from 'react'import * as React from 'react'import * as React from 'react'
+import * as React from 'react'import * as React from 'react'import * as React from 'react'import * as React from 'react'
 
 
 
@@ -6,363 +6,729 @@ interface WelcomeEmailProps {
 
   customerName: string
 
-  userEmail: stringinterface WelcomeEmailProps {interface WelcomeEmailProps {
+  userEmail: stringinterface WelcomeEmailProps {
 
   userPassword: string
 
-  orderId: string  customerName: string  customerName: string
+  orderId: string  customerName: string
 
   orderValue: number
 
-  paymentMethod: string  userEmail: string  userEmail: string
+  paymentMethod: string  userEmail: stringinterface WelcomeEmailProps {interface WelcomeEmailProps {
 
 }
 
-  userPassword: string  userPassword: string
+  userPassword: string
 
 // Cores do Design System Gravador Médico
 
-const colors = {  orderId: string  orderId: string
+const colors = {  orderId: string  customerName: string  customerName: string
 
-  primary: '#16A085',      // Teal - cor principal
+  primary: '#16A085',
 
-  primaryDark: '#138D75',  // Teal escuro para hover  orderValue: number  orderValue: number
+  primaryDark: '#138D75',  orderValue: number
 
-  accent: '#2EAE9A',       // Accent
+  accent: '#2EAE9A',
 
-  background: '#F7F9FA',   // Background claro  paymentMethod: string  paymentMethod: string
+  background: '#F7F9FA',  paymentMethod: string  userEmail: string  userEmail: string
 
-  card: '#FFFFFF',         // Card/Surface
+  card: '#FFFFFF',
 
-  textPrimary: '#1A2E38',  // Texto principal}}
+  textPrimary: '#1A2E38',}
 
-  textSecondary: '#5C7080', // Texto secundário
+  textSecondary: '#5C7080',
 
-  border: '#D8DEE4',       // Bordas
+  border: '#D8DEE4',  userPassword: string  userPassword: string
 
-  success: '#16A34A',      // Success
+  success: '#16A34A',
 
-  muted: '#E8F8F5',        // Muted background teal// Cores do Design System Gravador Médicoexport const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
+  muted: '#E8F8F5',// Cores do Design System Gravador Médico
 
 }
 
-const colors = {  customerName,
+const colors = {  orderId: string  orderId: string
 
 export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
 
-  customerName,  primary: '#16A085',      // Teal - cor principal  userEmail,
+  customerName,  primary: '#16A085',      // Teal - cor principal
 
   userEmail,
 
-  userPassword,  primaryDark: '#138D75',  // Teal escuro  userPassword,
+  userPassword,  primaryDark: '#138D75',  // Teal escuro para hover  orderValue: number  orderValue: number
 
   orderId,
 
-  orderValue,  accent: '#2EAE9A',       // Accent  orderId,
+  orderValue,  accent: '#2EAE9A',       // Accent
 
   paymentMethod,
 
-}) => {  background: '#F7F9FA',   // Background claro  orderValue,
+}) => {  background: '#F7F9FA',   // Background claro  paymentMethod: string  paymentMethod: string
 
   // Formatar número do pedido
 
-  const formatOrderId = (id: string): string => {  card: '#FFFFFF',         // Card/Surface  paymentMethod,
+  const formatOrderId = (id: string): string => {  card: '#FFFFFF',         // Card/Surface
 
     if (id.includes('-')) {
 
-      return `#${id.split('-')[0].toUpperCase()}`  textPrimary: '#1A2E38',  // Texto principal}) => (
+      return `#${id.split('-')[0].toUpperCase()}`  textPrimary: '#1A2E38',  // Texto principal}}
 
     }
 
-    return `#${id.substring(0, 8).toUpperCase()}`  textSecondary: '#5C7080', // Texto secundário  <html>
+    return `#${id.substring(0, 8).toUpperCase()}`  textSecondary: '#5C7080', // Texto secundário
 
   }
 
-  border: '#D8DEE4',       // Bordas    <head>
+  border: '#D8DEE4',       // Bordas
 
   // Formatar método de pagamento
 
-  const formatPaymentMethod = (method: string): string => {  success: '#16A34A',      // Success      <meta charSet="utf-8" />
+  const formatPaymentMethod = (method: string): string => {  success: '#16A34A',      // Success
 
     const methods: Record<string, string> = {
 
-      'pix': 'PIX',  muted: '#E8F8F5',        // Muted background    </head>
+      'pix': 'PIX',  muted: '#E8F8F5',        // Muted background teal// Cores do Design System Gravador Médicoexport const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
 
       'credit_card': 'Cartão de Crédito',
 
-      'debit_card': 'Cartão de Débito',}    <body style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5', margin: 0, padding: 0 }}>
+      'debit_card': 'Cartão de Débito',}
 
       'boleto': 'Boleto Bancário',
 
-      'appmax': 'Cartão de Crédito',      <table width="100%" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#f5f5f5', padding: '40px 20px' }}>
+      'appmax': 'Cartão de Crédito',const colors = {  customerName,
 
       'mercadopago': 'Mercado Pago',
 
-    }export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({        <tr>
+    }export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({
 
     return methods[method.toLowerCase()] || method
 
-  }  customerName,          <td align="center">
+  }  customerName,  primary: '#16A085',      // Teal - cor principal  userEmail,
 
 
 
-  return (  userEmail,            <table width="600" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+  // Formatar valor  userEmail,
+
+  const formatCurrency = (value: number): string => {
+
+    return new Intl.NumberFormat('pt-BR', {  userPassword,  primaryDark: '#138D75',  // Teal escuro  userPassword,
+
+      style: 'currency',
+
+      currency: 'BRL',  orderId,
+
+    }).format(value)
+
+  }  orderValue,  accent: '#2EAE9A',       // Accent  orderId,
+
+
+
+  return (  paymentMethod,
 
     <html>
 
-      <head>  userPassword,              
+      <head>}) => {  background: '#F7F9FA',   // Background claro  orderValue,
 
         <meta charSet="utf-8" />
 
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />  orderId,              {/* Header */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />  // Formatar número do pedido
 
         <title>Bem-vindo ao Gravador Médico</title>
 
-      </head>  orderValue,              <tr>
+      </head>  const formatOrderId = (id: string): string => {  card: '#FFFFFF',         // Card/Surface  paymentMethod,
 
       <body style={{
 
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",  paymentMethod,                <td style={{ background: 'linear-gradient(135deg, #dc2626 0%, #ea580c 100%)', padding: '40px 30px', textAlign: 'center' }}>
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",    if (id.includes('-')) {
 
         backgroundColor: colors.background,
 
-        margin: 0,}) => {                  <h1 style={{ color: '#ffffff', margin: 0, fontSize: '28px', fontWeight: 'bold' }}>
+        margin: 0,      return `#${id.split('-')[0].toUpperCase()}`  textPrimary: '#1A2E38',  // Texto principal}) => (
 
         padding: 0,
 
-      }}>  // Formatar número do pedido para exibição amigável                    🎉 Bem-vindo ao Gravador Médico!
+      }}>    }
 
         <table
 
-          width="100%"  const formatOrderId = (id: string): string => {                  </h1>
+          width="100%"    return `#${id.substring(0, 8).toUpperCase()}`  textSecondary: '#5C7080', // Texto secundário  <html>
 
           cellPadding="0"
 
-          cellSpacing="0"    // Se for UUID, pegar os primeiros 8 caracteres                  <p style={{ color: '#ffffff', margin: '10px 0 0 0', fontSize: '16px', opacity: 0.9 }}>
+          cellSpacing="0"  }
 
           style={{
 
-            backgroundColor: colors.background,    if (id.includes('-')) {                    Seu acesso está pronto!
+            backgroundColor: colors.background,  border: '#D8DEE4',       // Bordas    <head>
 
             padding: '40px 20px',
 
-          }}      return id.split('-')[0].toUpperCase()                  </p>
+          }}  // Formatar método de pagamento
 
         >
 
-          <tr>    }                </td>
+          <tr>  const formatPaymentMethod = (method: string): string => {  success: '#16A34A',      // Success      <meta charSet="utf-8" />
 
             <td align="center">
 
-              <table    // Se começar com "manual-", formatar              </tr>
+              <table    const methods: Record<string, string> = {
 
                 width="600"
 
-                cellPadding="0"    if (id.startsWith('manual-')) {
+                cellPadding="0"      'pix': 'PIX',  muted: '#E8F8F5',        // Muted background    </head>
 
                 cellSpacing="0"
 
-                style={{      return id.replace('manual-', '').replace(/-/g, ' ').toUpperCase()              {/* Content */}
+                style={{      'credit_card': 'Cartão de Crédito',
 
                   backgroundColor: colors.card,
 
-                  borderRadius: '16px',    }              <tr>
+                  borderRadius: '16px',      'debit_card': 'Cartão de Débito',}    <body style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5', margin: 0, padding: 0 }}>
 
                   overflow: 'hidden',
 
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',    return id.substring(0, 8).toUpperCase()                <td style={{ padding: '40px 30px' }}>
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',      'boleto': 'Boleto Bancário',
 
                 }}
 
-              >  }                  <p style={{ color: '#333333', fontSize: '16px', lineHeight: '1.6', margin: '0 0 20px 0' }}>
+              >      'appmax': 'Cartão de Crédito',      <table width="100%" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#f5f5f5', padding: '40px 20px' }}>
 
                 {/* Header com gradiente teal */}
 
-                <tr>                    Olá, <strong>{customerName}</strong>! 👋
+                <tr>      'mercadopago': 'Mercado Pago',
 
                   <td
 
-                    style={{  // Formatar método de pagamento                  </p>
+                    style={{    }export const WelcomeEmail: React.FC<Readonly<WelcomeEmailProps>> = ({        <tr>
 
                       background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
 
-                      padding: '50px 40px',  const formatPaymentMethod = (method: string): string => {                  
+                      padding: '50px 40px',    return methods[method.toLowerCase()] || method
 
                       textAlign: 'center',
 
-                    }}    const methods: Record<string, string> = {                  <p style={{ color: '#555555', fontSize: '15px', lineHeight: '1.6', margin: '0 0 30px 0' }}>
+                    }}  }  customerName,          <td align="center">
 
                   >
 
-                    <div style={{ marginBottom: '20px' }}>      'pix': 'PIX',                    Sua compra foi confirmada com sucesso! Estamos muito felizes em ter você conosco. 
+                    <div style={{ marginBottom: '20px' }}>
 
-                      <span style={{ fontSize: '40px', display: 'inline-block' }}>🎙️</span>
+                      <span style={{ fontSize: '48px', display: 'inline-block' }}>🎙️</span>
 
-                    </div>      'credit_card': 'Cartão de Crédito',                    Abaixo estão suas credenciais de acesso:
+                    </div>  return (  userEmail,            <table width="600" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
 
                     <h1 style={{
 
-                      color: '#FFFFFF',      'debit_card': 'Cartão de Débito',                  </p>
+                      color: '#FFFFFF',    <html>
+
+                      fontSize: '28px',
+
+                      fontWeight: 700,      <head>  userPassword,              
 
                       margin: 0,
 
-                      fontSize: '28px',      'boleto': 'Boleto Bancário',
-
-                      fontWeight: '700',
-
-                      letterSpacing: '-0.5px',      'appmax': 'Cartão de Crédito',                  {/* Credentials Box */}
+                      letterSpacing: '-0.5px',        <meta charSet="utf-8" />
 
                     }}>
 
-                      Bem-vindo ao Gravador Médico!      'mercadopago': 'Mercado Pago',                  <table width="100%" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#f8fafc', border: '2px solid #e5e7eb', borderRadius: '8px', marginBottom: '30px' }}>
+                      Bem-vindo ao Gravador Médico!        <meta name="viewport" content="width=device-width, initial-scale=1.0" />  orderId,              {/* Header */}
 
                     </h1>
 
-                    <p style={{    }                    <tr>
+                    <p style={{        <title>Bem-vindo ao Gravador Médico</title>
 
                       color: 'rgba(255,255,255,0.9)',
 
-                      margin: '12px 0 0 0',    return methods[method.toLowerCase()] || method                      <td style={{ padding: '25px' }}>
+                      fontSize: '16px',      </head>  orderValue,              <tr>
 
-                      fontSize: '16px',
+                      margin: '12px 0 0 0',
 
-                    }}>  }                        <p style={{ color: '#64748b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 15px 0', fontWeight: 'bold' }}>
+                    }}>      <body style={{
 
-                      Sua compra foi aprovada com sucesso
+                      Seu acesso está pronto para uso
 
-                    </p>                          🔐 Suas Credenciais
+                    </p>        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",  paymentMethod,                <td style={{ background: 'linear-gradient(135deg, #dc2626 0%, #ea580c 100%)', padding: '40px 30px', textAlign: 'center' }}>
 
                   </td>
 
-                </tr>  return (                        </p>
+                </tr>        backgroundColor: colors.background,
 
 
 
-                {/* Conteúdo Principal */}    <html>                        
+                {/* Conteúdo principal */}        margin: 0,}) => {                  <h1 style={{ color: '#ffffff', margin: 0, fontSize: '28px', fontWeight: 'bold' }}>
 
                 <tr>
 
-                  <td style={{ padding: '40px' }}>      <head>                        <table width="100%" cellPadding="0" cellSpacing="0">
+                  <td style={{ padding: '40px' }}>        padding: 0,
 
-                    <p style={{
+                    {/* Saudação */}
 
-                      color: colors.textPrimary,        <meta charSet="utf-8" />                          <tr>
+                    <p style={{      }}>  // Formatar número do pedido para exibição amigável                    🎉 Bem-vindo ao Gravador Médico!
 
-                      fontSize: '17px',
+                      color: colors.textPrimary,
 
-                      lineHeight: '1.6',        <meta name="viewport" content="width=device-width, initial-scale=1.0" />                            <td style={{ paddingBottom: '12px' }}>
+                      fontSize: '18px',        <table
 
-                      margin: '0 0 24px 0',
+                      lineHeight: '1.6',
 
-                    }}>        <title>Bem-vindo ao Gravador Médico</title>                              <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 4px 0' }}>Email:</p>
-
-                      Olá <strong>{customerName}</strong>,
-
-                    </p>      </head>                              <p style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>
-
-
-
-                    <p style={{      <body style={{                                 {userEmail}
-
-                      color: colors.textSecondary,
-
-                      fontSize: '15px',        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",                               </p>
-
-                      lineHeight: '1.7',
-
-                      margin: '0 0 32px 0',        backgroundColor: colors.background,                             </td>
+                      margin: '0 0 24px 0',          width="100%"  const formatOrderId = (id: string): string => {                  </h1>
 
                     }}>
 
-                      Parabéns pela sua compra! Seu acesso ao <strong style={{ color: colors.primary }}>Gravador Médico</strong> está pronto.         margin: 0,                           </tr>
+                      Olá, <strong>{customerName}</strong>! 👋          cellPadding="0"
 
-                      Use as credenciais abaixo para acessar o sistema.
+                    </p>
 
-                    </p>        padding: 0,                          <tr>
+          cellSpacing="0"    // Se for UUID, pegar os primeiros 8 caracteres                  <p style={{ color: '#ffffff', margin: '10px 0 0 0', fontSize: '16px', opacity: 0.9 }}>
+
+                    <p style={{
+
+                      color: colors.textSecondary,          style={{
+
+                      fontSize: '16px',
+
+                      lineHeight: '1.6',            backgroundColor: colors.background,    if (id.includes('-')) {                    Seu acesso está pronto!
+
+                      margin: '0 0 32px 0',
+
+                    }}>            padding: '40px 20px',
+
+                      Sua compra foi confirmada com sucesso! Abaixo estão suas credenciais de acesso à plataforma.
+
+                    </p>          }}      return id.split('-')[0].toUpperCase()                  </p>
 
 
 
-                    {/* Box de Credenciais */}        WebkitTextSizeAdjust: '100%',                            <td style={{ paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                    {/* Box de credenciais */}        >
 
-                    <table
+                    <div style={{
 
-                      width="100%"        msTextSizeAdjust: '100%'                              <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 4px 0' }}>Senha:</p>
+                      backgroundColor: colors.muted,          <tr>    }                </td>
 
-                      cellPadding="0"
+                      borderRadius: '12px',
 
-                      cellSpacing="0"      }}>                              <p style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>
+                      padding: '28px',            <td align="center">
 
-                      style={{
+                      marginBottom: '32px',
 
-                        backgroundColor: colors.muted,        <table                                 {userPassword}
+                      border: `1px solid ${colors.primary}20`,              <table    // Se começar com "manual-", formatar              </tr>
 
-                        borderRadius: '12px',
+                    }}>
 
-                        border: `1px solid ${colors.border}`,          role="presentation"                              </p>
+                      <h2 style={{                width="600"
 
-                        marginBottom: '32px',
+                        color: colors.primary,
 
-                      }}          width="100%"                             </td>
+                        fontSize: '16px',                cellPadding="0"    if (id.startsWith('manual-')) {
 
-                    >
+                        fontWeight: 600,
 
-                      <tr>          cellPadding="0"                           </tr>
+                        margin: '0 0 20px 0',                cellSpacing="0"
 
-                        <td style={{ padding: '28px' }}>
+                        textTransform: 'uppercase',
 
-                          <p style={{          cellSpacing="0"                         </table>
+                        letterSpacing: '0.5px',                style={{      return id.replace('manual-', '').replace(/-/g, ' ').toUpperCase()              {/* Content */}
 
-                            color: colors.primary,
+                      }}>
 
-                            fontSize: '14px',          style={{ backgroundColor: colors.background, padding: '40px 20px' }}                      </td>
+                        🔐 Suas Credenciais de Acesso                  backgroundColor: colors.card,
 
-                            fontWeight: '700',
+                      </h2>
 
-                            textTransform: 'uppercase',        >                    </tr>
+                  borderRadius: '16px',    }              <tr>
 
-                            letterSpacing: '0.5px',
+                      {/* Email */}
 
-                            margin: '0 0 20px 0',          <tr>                  </table>
+                      <div style={{ marginBottom: '16px' }}>                  overflow: 'hidden',
+
+                        <div style={{
+
+                          color: colors.textSecondary,                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',    return id.substring(0, 8).toUpperCase()                <td style={{ padding: '40px 30px' }}>
+
+                          fontSize: '13px',
+
+                          marginBottom: '4px',                }}
+
+                        }}>
+
+                          E-mail              >  }                  <p style={{ color: '#333333', fontSize: '16px', lineHeight: '1.6', margin: '0 0 20px 0' }}>
+
+                        </div>
+
+                        <div style={{                {/* Header com gradiente teal */}
+
+                          backgroundColor: colors.card,
+
+                          padding: '14px 16px',                <tr>                    Olá, <strong>{customerName}</strong>! 👋
+
+                          borderRadius: '8px',
+
+                          fontFamily: 'monospace',                  <td
+
+                          fontSize: '15px',
+
+                          color: colors.textPrimary,                    style={{  // Formatar método de pagamento                  </p>
+
+                          border: `1px solid ${colors.border}`,
+
+                        }}>                      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
+
+                          {userEmail}
+
+                        </div>                      padding: '50px 40px',  const formatPaymentMethod = (method: string): string => {                  
+
+                      </div>
+
+                      textAlign: 'center',
+
+                      {/* Senha */}
+
+                      <div>                    }}    const methods: Record<string, string> = {                  <p style={{ color: '#555555', fontSize: '15px', lineHeight: '1.6', margin: '0 0 30px 0' }}>
+
+                        <div style={{
+
+                          color: colors.textSecondary,                  >
+
+                          fontSize: '13px',
+
+                          marginBottom: '4px',                    <div style={{ marginBottom: '20px' }}>      'pix': 'PIX',                    Sua compra foi confirmada com sucesso! Estamos muito felizes em ter você conosco. 
+
+                        }}>
+
+                          Senha                      <span style={{ fontSize: '40px', display: 'inline-block' }}>🎙️</span>
+
+                        </div>
+
+                        <div style={{                    </div>      'credit_card': 'Cartão de Crédito',                    Abaixo estão suas credenciais de acesso:
+
+                          backgroundColor: colors.card,
+
+                          padding: '14px 16px',                    <h1 style={{
+
+                          borderRadius: '8px',
+
+                          fontFamily: 'monospace',                      color: '#FFFFFF',      'debit_card': 'Cartão de Débito',                  </p>
+
+                          fontSize: '15px',
+
+                          color: colors.textPrimary,                      margin: 0,
+
+                          border: `1px solid ${colors.border}`,
+
+                        }}>                      fontSize: '28px',      'boleto': 'Boleto Bancário',
+
+                          {userPassword}
+
+                        </div>                      fontWeight: '700',
+
+                      </div>
+
+                    </div>                      letterSpacing: '-0.5px',      'appmax': 'Cartão de Crédito',                  {/* Credentials Box */}
+
+
+
+                    {/* Botão de acesso */}                    }}>
+
+                    <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+
+                      <a                      Bem-vindo ao Gravador Médico!      'mercadopago': 'Mercado Pago',                  <table width="100%" cellPadding="0" cellSpacing="0" style={{ backgroundColor: '#f8fafc', border: '2px solid #e5e7eb', borderRadius: '8px', marginBottom: '30px' }}>
+
+                        href="https://app.gravadormedico.com.br"
+
+                        style={{                    </h1>
+
+                          display: 'inline-block',
+
+                          backgroundColor: colors.primary,                    <p style={{    }                    <tr>
+
+                          color: '#FFFFFF',
+
+                          padding: '16px 40px',                      color: 'rgba(255,255,255,0.9)',
+
+                          borderRadius: '8px',
+
+                          textDecoration: 'none',                      margin: '12px 0 0 0',    return methods[method.toLowerCase()] || method                      <td style={{ padding: '25px' }}>
+
+                          fontWeight: 600,
+
+                          fontSize: '16px',                      fontSize: '16px',
+
+                        }}
+
+                      >                    }}>  }                        <p style={{ color: '#64748b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 15px 0', fontWeight: 'bold' }}>
+
+                        Acessar Plataforma →
+
+                      </a>                      Sua compra foi aprovada com sucesso
+
+                    </div>
+
+                    </p>                          🔐 Suas Credenciais
+
+                    {/* Detalhes do pedido */}
+
+                    <div style={{                  </td>
+
+                      backgroundColor: colors.background,
+
+                      borderRadius: '12px',                </tr>  return (                        </p>
+
+                      padding: '24px',
+
+                      border: `1px solid ${colors.border}`,
+
+                    }}>
+
+                      <h3 style={{                {/* Conteúdo Principal */}    <html>                        
+
+                        color: colors.textPrimary,
+
+                        fontSize: '14px',                <tr>
+
+                        fontWeight: 600,
+
+                        margin: '0 0 16px 0',                  <td style={{ padding: '40px' }}>      <head>                        <table width="100%" cellPadding="0" cellSpacing="0">
+
+                        textTransform: 'uppercase',
+
+                        letterSpacing: '0.5px',                    <p style={{
+
+                      }}>
+
+                        📋 Detalhes do Pedido                      color: colors.textPrimary,        <meta charSet="utf-8" />                          <tr>
+
+                      </h3>
+
+                      fontSize: '17px',
+
+                      <table width="100%" cellPadding="0" cellSpacing="0">
+
+                        <tr>                      lineHeight: '1.6',        <meta name="viewport" content="width=device-width, initial-scale=1.0" />                            <td style={{ paddingBottom: '12px' }}>
+
+                          <td style={{
+
+                            color: colors.textSecondary,                      margin: '0 0 24px 0',
+
+                            fontSize: '14px',
+
+                            padding: '8px 0',                    }}>        <title>Bem-vindo ao Gravador Médico</title>                              <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 4px 0' }}>Email:</p>
 
                           }}>
 
-                            🔐 Seus Dados de Acesso            <td align="center">
+                            Número do Pedido                      Olá <strong>{customerName}</strong>,
 
-                          </p>
+                          </td>
 
-              <table                   {/* CTA Button */}
+                          <td style={{                    </p>      </head>                              <p style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>
 
-                          <div style={{ marginBottom: '16px' }}>
+                            color: colors.textPrimary,
 
-                            <p style={{                role="presentation"                  <table width="100%" cellPadding="0" cellSpacing="0" style={{ marginBottom: '30px' }}>
+                            fontSize: '14px',
 
-                              color: colors.textSecondary,
+                            fontWeight: 600,
+
+                            padding: '8px 0',                    <p style={{      <body style={{                                 {userEmail}
+
+                            textAlign: 'right',
+
+                          }}>                      color: colors.textSecondary,
+
+                            {formatOrderId(orderId)}
+
+                          </td>                      fontSize: '15px',        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",                               </p>
+
+                        </tr>
+
+                        <tr>                      lineHeight: '1.7',
+
+                          <td style={{
+
+                            color: colors.textSecondary,                      margin: '0 0 32px 0',        backgroundColor: colors.background,                             </td>
+
+                            fontSize: '14px',
+
+                            padding: '8px 0',                    }}>
+
+                            borderTop: `1px solid ${colors.border}`,
+
+                          }}>                      Parabéns pela sua compra! Seu acesso ao <strong style={{ color: colors.primary }}>Gravador Médico</strong> está pronto.         margin: 0,                           </tr>
+
+                            Valor
+
+                          </td>                      Use as credenciais abaixo para acessar o sistema.
+
+                          <td style={{
+
+                            color: colors.success,                    </p>        padding: 0,                          <tr>
+
+                            fontSize: '14px',
+
+                            fontWeight: 600,
+
+                            padding: '8px 0',
+
+                            textAlign: 'right',                    {/* Box de Credenciais */}        WebkitTextSizeAdjust: '100%',                            <td style={{ paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+
+                            borderTop: `1px solid ${colors.border}`,
+
+                          }}>                    <table
+
+                            {formatCurrency(orderValue)}
+
+                          </td>                      width="100%"        msTextSizeAdjust: '100%'                              <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 4px 0' }}>Senha:</p>
+
+                        </tr>
+
+                        <tr>                      cellPadding="0"
+
+                          <td style={{
+
+                            color: colors.textSecondary,                      cellSpacing="0"      }}>                              <p style={{ color: '#111827', fontSize: '16px', fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>
+
+                            fontSize: '14px',
+
+                            padding: '8px 0',                      style={{
+
+                            borderTop: `1px solid ${colors.border}`,
+
+                          }}>                        backgroundColor: colors.muted,        <table                                 {userPassword}
+
+                            Pagamento
+
+                          </td>                        borderRadius: '12px',
+
+                          <td style={{
+
+                            color: colors.textPrimary,                        border: `1px solid ${colors.border}`,          role="presentation"                              </p>
+
+                            fontSize: '14px',
+
+                            fontWeight: 600,                        marginBottom: '32px',
+
+                            padding: '8px 0',
+
+                            textAlign: 'right',                      }}          width="100%"                             </td>
+
+                            borderTop: `1px solid ${colors.border}`,
+
+                          }}>                    >
+
+                            {formatPaymentMethod(paymentMethod)}
+
+                          </td>                      <tr>          cellPadding="0"                           </tr>
+
+                        </tr>
+
+                      </table>                        <td style={{ padding: '28px' }}>
+
+                    </div>
+
+                  </td>                          <p style={{          cellSpacing="0"                         </table>
+
+                </tr>
+
+                            color: colors.primary,
+
+                {/* Footer */}
+
+                <tr>                            fontSize: '14px',          style={{ backgroundColor: colors.background, padding: '40px 20px' }}                      </td>
+
+                  <td style={{
+
+                    backgroundColor: colors.background,                            fontWeight: '700',
+
+                    padding: '30px 40px',
+
+                    textAlign: 'center',                            textTransform: 'uppercase',        >                    </tr>
+
+                    borderTop: `1px solid ${colors.border}`,
+
+                  }}>                            letterSpacing: '0.5px',
+
+                    <p style={{
+
+                      color: colors.textSecondary,                            margin: '0 0 20px 0',          <tr>                  </table>
+
+                      fontSize: '14px',
+
+                      margin: '0 0 8px 0',                          }}>
+
+                    }}>
+
+                      Precisa de ajuda? Entre em contato conosco                            🔐 Seus Dados de Acesso            <td align="center">
+
+                    </p>
+
+                    <a                          </p>
+
+                      href="mailto:suporte@gravadormedico.com.br"
+
+                      style={{              <table                   {/* CTA Button */}
+
+                        color: colors.primary,
+
+                        fontSize: '14px',                          <div style={{ marginBottom: '16px' }}>
+
+                        textDecoration: 'none',
+
+                      }}                            <p style={{                role="presentation"                  <table width="100%" cellPadding="0" cellSpacing="0" style={{ marginBottom: '30px' }}>
+
+                    >
+
+                      suporte@gravadormedico.com.br                              color: colors.textSecondary,
+
+                    </a>
 
                               fontSize: '13px',                width="600"                     <tr>
 
-                              margin: '0 0 6px 0',
+                    <div style={{
 
-                            }}>                cellPadding="0"                       <td align="center">
+                      marginTop: '24px',                              margin: '0 0 6px 0',
 
-                              E-mail:
+                      paddingTop: '20px',
 
-                            </p>                cellSpacing="0"                         <a 
+                      borderTop: `1px solid ${colors.border}`,                            }}>                cellPadding="0"                       <td align="center">
 
-                            <p style={{
+                    }}>
 
-                              backgroundColor: colors.card,                style={{                           href="https://www.gravadormedico.com.br/login" 
+                      <p style={{                              E-mail:
 
-                              color: colors.textPrimary,
+                        color: colors.textSecondary,
 
-                              fontSize: '15px',                  backgroundColor: colors.card,                           style={{ 
+                        fontSize: '12px',                            </p>                cellSpacing="0"                         <a 
 
-                              fontFamily: 'monospace',
+                        margin: 0,
 
-                              fontWeight: '600',                  borderRadius: '12px',                             display: 'inline-block',
+                      }}>                            <p style={{
 
-                              margin: 0,
+                        © {new Date().getFullYear()} Gravador Médico. Todos os direitos reservados.
+
+                      </p>                              backgroundColor: colors.card,                style={{                           href="https://www.gravadormedico.com.br/login" 
+
+                    </div>
+
+                  </td>                              color: colors.textPrimary,
+
+                </tr>
+
+              </table>                              fontSize: '15px',                  backgroundColor: colors.card,                           style={{ 
+
+            </td>
+
+          </tr>                              fontFamily: 'monospace',
+
+        </table>
+
+      </body>                              fontWeight: '600',                  borderRadius: '12px',                             display: 'inline-block',
+
+    </html>
+
+  )                              margin: 0,
+
+}
 
                               padding: '12px 16px',                  overflow: 'hidden',                             backgroundColor: '#dc2626',
+
+export default WelcomeEmail
 
                               borderRadius: '8px',
 

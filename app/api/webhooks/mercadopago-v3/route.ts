@@ -218,13 +218,35 @@ export async function POST(request: NextRequest) {
     // 7️⃣ CRIAR/ATUALIZAR CUSTOMER
     // ==================================================
     let customerId: string | null = null;
-    const customerEmail = paymentDetails?.payer?.email || order?.customer_email;
-    const customerName = paymentDetails?.payer?.first_name 
-      ? `${paymentDetails.payer.first_name} ${paymentDetails.payer.last_name || ''}`
-      : order?.customer_name;
-    const customerPhone = paymentDetails?.payer?.phone?.number || order?.customer_phone;
     
-    if (customerEmail) {
+    // Tentar obter dados do cliente de várias fontes
+    const customerEmail = 
+      paymentDetails?.payer?.email || 
+      paymentDetails?.additional_info?.payer?.email ||
+      order?.customer_email ||
+      null;
+    
+    const customerName = 
+      (paymentDetails?.payer?.first_name 
+        ? `${paymentDetails.payer.first_name} ${paymentDetails.payer.last_name || ''}`.trim()
+        : null) ||
+      (paymentDetails?.additional_info?.payer?.first_name
+        ? `${paymentDetails.additional_info.payer.first_name} ${paymentDetails.additional_info.payer.last_name || ''}`.trim()
+        : null) ||
+      paymentDetails?.payer?.identification?.number || // CPF como fallback
+      order?.customer_name ||
+      null;
+    
+    const customerPhone = 
+      paymentDetails?.payer?.phone?.number || 
+      paymentDetails?.additional_info?.payer?.phone?.number ||
+      order?.customer_phone ||
+      null;
+    
+    // Log para debug
+    console.log(`[MP Webhook] Customer data - Email: ${customerEmail}, Name: ${customerName}, Phone: ${customerPhone}`);
+    
+    if (customerEmail && customerEmail !== 'unknown@mercadopago.com') {
       try {
         const { data: customerRow } = await supabaseAdmin
           .from('customers')
@@ -257,11 +279,15 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     
     // ✅ SALVAR/ATUALIZAR NA TABELA SALES (CRÍTICO PARA O DASHBOARD!)
+    // Usar nome/email real ou gerar um identificador único
+    const finalCustomerName = customerName || (customerEmail ? customerEmail.split('@')[0] : `Pagamento #${paymentId}`);
+    const finalCustomerEmail = customerEmail || `mp-${paymentId}@pagamento.local`;
+    
     const salePayload: Record<string, any> = {
       mercadopago_payment_id: paymentId,
       customer_id: customerId,
-      customer_name: customerName || 'Cliente MP',
-      customer_email: customerEmail,
+      customer_name: finalCustomerName,
+      customer_email: finalCustomerEmail,
       customer_phone: customerPhone,
       total_amount: totalAmount,
       subtotal: totalAmount,

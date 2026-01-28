@@ -1489,10 +1489,13 @@ export default function CheckoutPage() {
                         {/* Dados do recebedor - Credibilidade */}
                         <div className="bg-white/80 rounded-lg p-3 border border-brand-100">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                            Você pagará para
+                            VOCÊ PAGARÁ PARA
                           </p>
-                          <p className="font-bold text-gray-900 text-sm mb-3">
-                            Hdm Consultoria Imobiliaria E Seguros Ltda
+                          <p className="font-bold text-gray-900 text-sm">
+                            HDM CONSULTORIA IMOBILIARIA E SEGUROS LTDA
+                          </p>
+                          <p className="text-xs text-brand-600 mb-3">
+                            Empresa gestora de tecnologia e processamento de pagamentos
                           </p>
                           
                           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1501,8 +1504,8 @@ export default function CheckoutPage() {
                               <p className="font-medium text-gray-800">50.216.907/0001-60</p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Instituição</p>
-                              <p className="font-medium text-gray-800">Mercado Pago</p>
+                              <p className="text-gray-500">INSTITUIÇÃO</p>
+                              <p className="font-medium text-gray-800">MERCADO PAGO</p>
                             </div>
                           </div>
                         </div>

@@ -79,17 +79,15 @@ export async function POST(request: NextRequest) {
     
     const subtotal = MAIN_PRODUCT_PRICE + orderBumpsTotal
     
-    // REGRA DE OURO: Valor mínimo R$ 1,00 (não R$ 0,10)
-    // Appmax e gateways de pagamento exigem valor mínimo
-  const MINIMUM_ORDER_VALUE = 1.00
-  const MINIMUM_CREDIT_VALUE = 5.00
+    // REGRA: Valor mínimo R$ 0,01 para evitar transações zeradas
+    const MINIMUM_ORDER_VALUE = 0.01
     
     // Garantir que discount é número com 2 casas decimais
     let discount = parseFloat((orderData.discount || 0).toFixed(2))
     
-    // Limitar desconto: total - desconto NUNCA < R$ 1,00
+    // Limitar desconto: total - desconto NUNCA < R$ 0,01
     if (subtotal - discount < MINIMUM_ORDER_VALUE) {
-      console.warn(`⚠️ Desconto (R$ ${discount}) muito alto. Subtotal: R$ ${subtotal}. Limitando para deixar R$ 1,00...`)
+      console.warn(`⚠️ Desconto (R$ ${discount}) muito alto. Subtotal: R$ ${subtotal}. Limitando para deixar R$ ${MINIMUM_ORDER_VALUE}...`)
       discount = subtotal - MINIMUM_ORDER_VALUE
     }
     
@@ -111,21 +109,6 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           error: `Valor do pedido (R$ ${finalTotal.toFixed(2)}) abaixo do mínimo (R$ ${MINIMUM_ORDER_VALUE.toFixed(2)})`,
-          details: {
-            subtotal: subtotal.toFixed(2),
-            discount: discount.toFixed(2),
-            total: finalTotal
-          }
-        },
-        { status: 400 }
-      )
-    }
-
-    if (body.paymentMethod === 'credit' && finalTotal < MINIMUM_CREDIT_VALUE) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Para pagamento no cartão, o valor mínimo por parcela é R$ ${MINIMUM_CREDIT_VALUE.toFixed(2)}.`,
           details: {
             subtotal: subtotal.toFixed(2),
             discount: discount.toFixed(2),

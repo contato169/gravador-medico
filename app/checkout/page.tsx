@@ -1514,7 +1514,7 @@ export default function CheckoutPage() {
                         {/* Selo de segurança */}
                         <div className="flex items-center gap-2 text-xs text-gray-600">
                           <ShieldCheck className="w-4 h-4 text-green-600" />
-                          <span>Pagamento processado com segurança pelo Mercado Pago</span>
+                          <span>Pagamento instantâneo e 100% seguro</span>
                         </div>
                       </motion.div>
                     )}

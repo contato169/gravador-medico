@@ -1471,7 +1471,7 @@ export default function CheckoutPage() {
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
-                        className="bg-gradient-to-br from-brand-50 to-green-50 border-2 border-brand-200 rounded-xl p-4 space-y-4"
+                        className="bg-gradient-to-br from-brand-50 to-green-50 border-2 border-brand-200 rounded-xl p-4 space-y-3"
                       >
                         {/* Informação principal */}
                         <div className="flex items-start gap-3">
@@ -1486,7 +1486,7 @@ export default function CheckoutPage() {
                           </div>
                         </div>
 
-                        {/* Dados do recebedor - Credibilidade */}
+                        {/* DADOS DO RECEBEDOR - COMENTADO (manter salvo para uso futuro)
                         <div className="bg-white/80 rounded-lg p-3 border border-brand-100">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             VOCÊ PAGARÁ PARA
@@ -1509,11 +1509,12 @@ export default function CheckoutPage() {
                             </div>
                           </div>
                         </div>
+                        */}
 
                         {/* Selo de segurança */}
                         <div className="flex items-center gap-2 text-xs text-gray-600">
                           <ShieldCheck className="w-4 h-4 text-green-600" />
-                          <span>Transação processada com segurança pelo Mercado Pago</span>
+                          <span>Pagamento processado com segurança pelo Mercado Pago</span>
                         </div>
                       </motion.div>
                     )}

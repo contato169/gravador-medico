@@ -38,19 +38,20 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || '';
     const segment = searchParams.get('segment') || '';
-    const sortBy = searchParams.get('sortBy') || 'ltv';
+    const sortBy = searchParams.get('sortBy') || 'first_purchase';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     
     const offset = (page - 1) * limit;
     
-    // Base query
+    // Base query - APENAS clientes que efetivamente compraram (paid_orders > 0)
     let query = supabase
       .from('customer_intelligence')
-      .select('*', { count: 'exact' });
+      .select('*', { count: 'exact' })
+      .gt('paid_orders', 0);
     
-    // Busca full-text (nome ou email)
+    // Busca full-text (nome, email, telefone ou CPF)
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,cpf.ilike.%${search}%`);
     }
     
     // Filtro por segmento
@@ -59,8 +60,8 @@ export async function GET(request: NextRequest) {
     }
     
     // Ordenação
-    const validSortFields = ['ltv', 'aov', 'total_orders', 'last_purchase', 'engagement_score', 'days_since_last_purchase'];
-    const orderField = validSortFields.includes(sortBy) ? sortBy : 'ltv';
+    const validSortFields = ['ltv', 'aov', 'total_orders', 'last_purchase', 'first_purchase', 'engagement_score', 'days_since_last_purchase'];
+    const orderField = validSortFields.includes(sortBy) ? sortBy : 'first_purchase';
     query = query.order(orderField, { ascending: sortOrder === 'asc', nullsFirst: false });
     
     // Paginação

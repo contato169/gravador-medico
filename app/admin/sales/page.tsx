@@ -31,6 +31,7 @@ interface Sale {
   customer_name: string
   customer_email: string
   customer_phone?: string
+  customer_cpf?: string
   total_amount: number
   status: string
   failure_reason?: string
@@ -541,6 +542,29 @@ export default function SalesPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-400 w-24">Telefone:</span>
                         <span className="text-sm font-medium text-white">{selectedSale.customer_phone}</span>
+                        <button onClick={() => copyToClipboard(selectedSale.customer_phone || '', 'Telefone')} className="p-1 hover:bg-gray-700 rounded">
+                          <Copy className="w-3.5 h-3.5 text-gray-400" />
+                        </button>
+                      </div>
+                    )}
+                    {selectedSale.customer_cpf && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 w-24">CPF/CNPJ:</span>
+                        <span className="text-sm font-medium text-white font-mono">
+                          {(() => {
+                            const cleaned = selectedSale.customer_cpf.replace(/\D/g, '')
+                            if (cleaned.length === 11) {
+                              return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+                            }
+                            if (cleaned.length === 14) {
+                              return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+                            }
+                            return selectedSale.customer_cpf
+                          })()}
+                        </span>
+                        <button onClick={() => copyToClipboard(selectedSale.customer_cpf || '', 'CPF/CNPJ')} className="p-1 hover:bg-gray-700 rounded">
+                          <Copy className="w-3.5 h-3.5 text-gray-400" />
+                        </button>
                       </div>
                     )}
                   </div>

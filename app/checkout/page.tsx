@@ -419,6 +419,10 @@ export default function CheckoutPage() {
   // Validações
   const isStep1Valid = () => {
     const docClean = formData.cpf.replace(/\D/g, '')
+    const phoneClean = formData.phone.replace(/\D/g, '')
+    
+    // Telefone obrigatório (mínimo 10 dígitos: DDD + número)
+    const isPhoneValid = phoneClean.length >= 10
     
     // Valida baseado no tipo de documento
     if (formData.documentType === 'CNPJ') {
@@ -427,6 +431,7 @@ export default function CheckoutPage() {
         formData.email && 
         formData.cpf && 
         formData.companyName && // Razão Social obrigatória para CNPJ
+        isPhoneValid &&
         docClean.length === 14 && 
         validateCNPJ(docClean) && 
         !formErrors.cpf
@@ -437,6 +442,7 @@ export default function CheckoutPage() {
       formData.name && 
       formData.email && 
       formData.cpf && 
+      isPhoneValid &&
       docClean.length === 11 && 
       validateCPF(docClean) && 
       !formErrors.cpf
@@ -980,7 +986,7 @@ export default function CheckoutPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
                       <div className="min-w-0">
                         <label className="block text-sm font-bold text-gray-900 mb-2">
-                          Telefone
+                          Telefone <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="tel"
@@ -992,6 +998,7 @@ export default function CheckoutPage() {
                           className="w-full max-w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none transition-colors text-sm md:text-base box-border"
                           placeholder="(11) 99999-9999"
                           maxLength={15}
+                          required
                         />
                       </div>
 

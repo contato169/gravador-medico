@@ -91,6 +91,7 @@ export async function GET(request: NextRequest) {
         customer_name: row.customer_name || (row.customer_email ? row.customer_email.split('@')[0] : 'Cliente'),
         customer_email: row.customer_email,
         customer_phone: row.customer_phone,
+        customer_cpf: row.customer_cpf,
         total_amount: Number(row.total_amount || row.cart_total || 0),
         status: row.status,
         failure_reason: row.failure_reason || row?.metadata?.failure_reason || null,

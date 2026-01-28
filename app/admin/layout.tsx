@@ -54,12 +54,6 @@ const automationItems = [
     href: '/admin/recovery',
     badge: null
   },
-  { 
-    icon: MessageSquare, 
-    label: 'WhatsApp', 
-    href: '/admin/whatsapp',
-    badge: null
-  },
 ]
 
 const lovableItems = [
@@ -237,7 +231,16 @@ const menuItems = [
     items: catalogItems
   },
   
-  // 🔧 FERRAMENTAS
+  // � WHATSAPP (Acesso rápido)
+  { 
+    icon: MessageSquare, 
+    label: 'WhatsApp', 
+    href: '/admin/whatsapp',
+    badge: null,
+    highlight: true
+  },
+  
+  // �🔧 FERRAMENTAS
   { 
     label: 'Tracking', 
     icon: MousePointerClick,

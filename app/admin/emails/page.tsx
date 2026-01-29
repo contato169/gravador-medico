@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Mail, Search, Eye, RefreshCw, CheckCircle2, XCircle, Clock, Send, TrendingUp, BarChart3, MousePointerClick, Copy, Check, Sparkles } from 'lucide-react'
+import { Mail, Search, Eye, RefreshCw, CheckCircle2, XCircle, Clock, Send, TrendingUp, BarChart3, MousePointerClick, Copy, Check, Sparkles, RotateCw } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { getDisplayName } from '@/lib/display-helpers'
@@ -89,6 +89,10 @@ export default function EmailManagementPage() {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
   const [loadingTimeline, setLoadingTimeline] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // Estados para botões de pânico
+  const [resyncing, setResyncing] = useState<string | null>(null) // email do cliente em resync
+  const [resending, setResending] = useState<string | null>(null) // email do cliente em resend
 
   useEffect(() => {
     loadEmails()
@@ -179,6 +183,103 @@ export default function EmailManagementPage() {
         {config.label}
       </span>
     )
+  }
+
+  // =====================================================
+  // BOTÕES DE PÂNICO
+  // =====================================================
+
+  async function handleResyncSale(customerEmail: string, orderId: string | null) {
+    if (resyncing) return // Evitar cliques duplos
+
+    const confirmed = window.confirm(
+      `🔄 Resincronizar venda de ${customerEmail}?\n\n` +
+      `Isso irá:\n` +
+      `✅ Reprocessar o provisionamento\n` +
+      `✅ Criar/atualizar usuário Lovable\n` +
+      `✅ Liberar acesso na plataforma\n\n` +
+      `Continuar?`
+    )
+
+    if (!confirmed) return
+
+    setResyncing(customerEmail)
+
+    try {
+      const response = await fetch('/api/admin/resync-sale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          customerEmail,
+          saleId: orderId 
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert(
+          `✅ ${result.message}\n\n` +
+          `Queue ID: ${result.queueId}\n` +
+          `${result.alreadyQueued ? '⚠️ Já estava na fila' : '🆕 Adicionado à fila'}\n\n` +
+          `O sistema processará automaticamente.`
+        )
+        loadEmails() // Recarregar lista
+      } else {
+        alert(`❌ Erro: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Erro ao resincronizar:', error)
+      alert('❌ Erro ao processar resincronização')
+    } finally {
+      setResyncing(null)
+    }
+  }
+
+  async function handleResendEmail(customerEmail: string, orderId: string | null) {
+    if (resending) return // Evitar cliques duplos
+
+    const confirmed = window.confirm(
+      `📧 Reenviar e-mail de boas-vindas para ${customerEmail}?\n\n` +
+      `Isso irá:\n` +
+      `✅ Enviar novo e-mail com credenciais\n` +
+      `✅ Ignorar verificação de "já enviado"\n` +
+      `✅ Registrar no histórico\n\n` +
+      `Continuar?`
+    )
+
+    if (!confirmed) return
+
+    setResending(customerEmail)
+
+    try {
+      const response = await fetch('/api/admin/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          customerEmail,
+          saleId: orderId 
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert(
+          `✅ ${result.message}\n\n` +
+          `Email ID: ${result.emailId}\n\n` +
+          `O cliente receberá o e-mail em instantes.`
+        )
+        loadEmails() // Recarregar lista
+      } else {
+        alert(`❌ Erro: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Erro ao reenviar email:', error)
+      alert('❌ Erro ao processar reenvio')
+    } finally {
+      setResending(null)
+    }
   }
 
   return (
@@ -455,17 +556,53 @@ export default function EmailManagementPage() {
                           {format(new Date(email.created_at), 'dd/MM/yy HH:mm', { locale: ptBR })}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedEmail(email)
-                              setShowPreview(true)
-                            }}
-                            className="hover:bg-blue-900/30 hover:text-blue-400 text-white"
-                          >
-                            <Eye className="w-4 h-4 text-white" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            {/* Visualizar */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedEmail(email)
+                                setShowPreview(true)
+                              }}
+                              className="hover:bg-blue-900/30 hover:text-blue-400 text-white"
+                              title="Visualizar e-mail"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+
+                            {/* Resincronizar Venda */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleResyncSale(email.recipient_email, email.order_id)}
+                              disabled={resyncing === email.recipient_email}
+                              className="hover:bg-green-900/30 hover:text-green-400 text-gray-300 disabled:opacity-50"
+                              title="Resincronizar venda (provisionar acesso)"
+                            >
+                              {resyncing === email.recipient_email ? (
+                                <RotateCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4" />
+                              )}
+                            </Button>
+
+                            {/* Reenviar E-mail */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleResendEmail(email.recipient_email, email.order_id)}
+                              disabled={resending === email.recipient_email}
+                              className="hover:bg-purple-900/30 hover:text-purple-400 text-gray-300 disabled:opacity-50"
+                              title="Reenviar e-mail de boas-vindas"
+                            >
+                              {resending === email.recipient_email ? (
+                                <RotateCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Send className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

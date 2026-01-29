@@ -48,7 +48,9 @@ import {
   Ban,
   Trash2,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  RotateCw,
+  Send
 } from 'lucide-react'
 import { getDisplayName } from '@/lib/display-helpers'
 
@@ -82,6 +84,10 @@ export default function LovableUsersPage() {
   // Modal de confirmar excluir
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  // Estados para botões de pânico
+  const [resyncing, setResyncing] = useState<string | null>(null) // email do cliente em resync
+  const [resending, setResending] = useState<string | null>(null) // email do cliente em resend
 
   // =====================================================
   // CARREGAR USUÁRIOS
@@ -309,6 +315,95 @@ export default function LovableUsersPage() {
   // UTILITÁRIOS
   // =====================================================
 
+  // =====================================================
+  // BOTÕES DE PÂNICO
+  // =====================================================
+
+  const handleResyncSale = async (customerEmail: string) => {
+    if (resyncing) return // Evitar cliques duplos
+
+    const confirmed = window.confirm(
+      `🔄 Resincronizar venda de ${customerEmail}?\n\n` +
+      `Isso irá:\n` +
+      `✅ Reprocessar o provisionamento\n` +
+      `✅ Criar/atualizar usuário Lovable\n` +
+      `✅ Liberar acesso na plataforma\n\n` +
+      `Continuar?`
+    )
+
+    if (!confirmed) return
+
+    setResyncing(customerEmail)
+
+    try {
+      const response = await fetch('/api/admin/resync-sale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerEmail })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast(
+          `✅ ${result.message}\n` +
+          `${result.alreadyQueued ? '⚠️ Já estava na fila' : '🆕 Adicionado à fila'}`
+        )
+        loadUsers(false) // Recarregar lista
+      } else {
+        toast(`❌ ${result.error}`, 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao resincronizar:', error)
+      toast('❌ Erro ao processar resincronização', 'error')
+    } finally {
+      setResyncing(null)
+    }
+  }
+
+  const handleResendEmail = async (customerEmail: string) => {
+    if (resending) return // Evitar cliques duplos
+
+    const confirmed = window.confirm(
+      `📧 Reenviar e-mail de boas-vindas para ${customerEmail}?\n\n` +
+      `Isso irá:\n` +
+      `✅ Enviar novo e-mail com credenciais\n` +
+      `✅ Ignorar verificação de "já enviado"\n` +
+      `✅ Registrar no histórico\n\n` +
+      `Continuar?`
+    )
+
+    if (!confirmed) return
+
+    setResending(customerEmail)
+
+    try {
+      const response = await fetch('/api/admin/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerEmail })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast(`✅ ${result.message}`)
+        loadUsers(false) // Recarregar lista
+      } else {
+        toast(`❌ ${result.error}`, 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao reenviar email:', error)
+      toast('❌ Erro ao processar reenvio', 'error')
+    } finally {
+      setResending(null)
+    }
+  }
+
+  // =====================================================
+  // UTILITÁRIOS (CONTINUAÇÃO)
+  // =====================================================
+
   const handleGeneratePassword = (target: 'create' | 'reset') => {
     const password = generateSecurePassword(12)
     
@@ -500,6 +595,39 @@ export default function LovableUsersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {/* Resincronizar Venda */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleResyncSale(user.email)}
+                          disabled={resyncing === user.email}
+                          className="text-green-400 hover:text-green-300 hover:bg-gray-700 disabled:opacity-50"
+                          title="Resincronizar venda (provisionar acesso)"
+                        >
+                          {resyncing === user.email ? (
+                            <RotateCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                        </Button>
+
+                        {/* Reenviar E-mail */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleResendEmail(user.email)}
+                          disabled={resending === user.email}
+                          className="text-purple-400 hover:text-purple-300 hover:bg-gray-700 disabled:opacity-50"
+                          title="Reenviar e-mail de boas-vindas"
+                        >
+                          {resending === user.email ? (
+                            <RotateCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                        </Button>
+
+                        {/* Alterar Senha */}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -512,6 +640,8 @@ export default function LovableUsersPage() {
                         >
                           <Key className="h-4 w-4" />
                         </Button>
+
+                        {/* Desativar/Reativar */}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -527,6 +657,8 @@ export default function LovableUsersPage() {
                         >
                           {isUserBanned(user) ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                         </Button>
+
+                        {/* Excluir */}
                         <Button
                           variant="ghost"
                           size="sm"

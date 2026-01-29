@@ -149,11 +149,22 @@ async function fetchAppmaxOrders(days: number = 30): Promise<any[]> {
   
   const filteredOrders = allOrders.filter((order: any) => {
     const orderDate = new Date(order.created_at || order.date)
-    return orderDate >= startDate
+    const isWithinDateRange = orderDate >= startDate
+    
+    // ✅ CORREÇÃO: Filtrar apenas pedidos PAGOS
+    // Pedidos pendentes do fallback que não foram concluídos não devem aparecer
+    const orderStatus = (order.status || '').toLowerCase().trim()
+    const isPaid = ['pago', 'approved', 'aprovado', 'integrado', 'enviado', 'entregue', 'completed'].includes(orderStatus)
+    
+    if (!isPaid) {
+      console.log(`⏭️ [APPMAX] Pulando pedido ${order.id} - status: ${orderStatus} (não pago)`)
+    }
+    
+    return isWithinDateRange && isPaid
   })
   
   console.log(`📅 [APPMAX] Data de corte: ${startDate.toISOString()}`)
-  console.log(`📅 [APPMAX] Pedidos filtrados (últimos ${days} dias): ${filteredOrders.length}`)
+  console.log(`📅 [APPMAX] Pedidos filtrados (últimos ${days} dias, apenas pagos): ${filteredOrders.length}`)
   
   return filteredOrders
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createAppmaxOrder } from '@/lib/appmax'
+import { processProvisioningQueue } from '@/lib/provisioning-worker'
 
 /**
  * 🏢 CHECKOUT ENTERPRISE LEVEL
@@ -12,6 +13,7 @@ import { createAppmaxOrder } from '@/lib/appmax'
  * - ✅ Cascata inteligente MP → AppMax
  * - ✅ PCI Compliant (tokens, não dados brutos)
  * - ✅ Logging detalhado para debug (checkout_logs)
+ * - ✅ Provisioning imediato (email + criação de usuário)
  */
 
 // =====================================================
@@ -363,6 +365,13 @@ export async function POST(request: NextRequest) {
 
             if (provisioningError) {
               console.error('⚠️ Falha ao enfileirar provisionamento (MP):', provisioningError)
+            } else {
+              console.log(`📬 Adicionado na fila de provisionamento (sale_id: ${order.id})`)
+              
+              // 🚀 Processar fila imediatamente (fire-and-forget, não bloqueia a resposta)
+              processProvisioningQueue()
+                .then(result => console.log(`📧 Provisioning processado:`, result))
+                .catch(err => console.error(`⚠️ Erro no provisioning:`, err))
             }
           }
 
@@ -698,6 +707,13 @@ export async function POST(request: NextRequest) {
 
             if (provisioningError) {
               console.error('⚠️ Falha ao enfileirar provisionamento (AppMax):', provisioningError)
+            } else {
+              console.log(`📬 Adicionado na fila de provisionamento (sale_id: ${order.id})`)
+              
+              // 🚀 Processar fila imediatamente (fire-and-forget, não bloqueia a resposta)
+              processProvisioningQueue()
+                .then(result => console.log(`📧 Provisioning processado:`, result))
+                .catch(err => console.error(`⚠️ Erro no provisioning:`, err))
             }
           }
 

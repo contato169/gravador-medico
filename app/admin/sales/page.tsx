@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatBRDateTime, getUTCDayRange } from '@/lib/date-utils'
+import { formatCpfCnpj, formatPhone } from '@/lib/display-helpers'
 import { refundOrder } from '@/actions/refund-order'
 import { SyncAppmaxButton } from '@/components/dashboard/SyncAppmaxButton'
 import { SyncMercadoPagoButton } from '@/components/dashboard/SyncMercadoPagoButton'
@@ -389,6 +390,8 @@ export default function SalesPage() {
                 <tr>
                   <th className="px-2 lg:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase whitespace-nowrap">Status</th>
                   <th className="px-2 lg:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase whitespace-nowrap">Cliente</th>
+                  <th className="px-2 lg:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase whitespace-nowrap hidden md:table-cell">Telefone</th>
+                  <th className="px-2 lg:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase whitespace-nowrap hidden lg:table-cell">CPF/CNPJ</th>
                   <th className="px-2 lg:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase whitespace-nowrap">Valor</th>
                   <th className="px-2 lg:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase whitespace-nowrap hidden lg:table-cell">Cupom</th>
                   <th className="px-2 lg:px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase whitespace-nowrap">Método</th>
@@ -420,6 +423,12 @@ export default function SalesPage() {
                       <td className="px-2 lg:px-4 py-2 lg:py-4">
                         <div className="font-medium text-white text-sm truncate max-w-[120px] lg:max-w-[200px]">{sale.customer_name}</div>
                         <div className="text-xs text-gray-400 truncate max-w-[120px] lg:max-w-[200px]">{sale.customer_email}</div>
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap hidden md:table-cell">
+                        <div className="text-xs text-gray-300 font-mono">{formatPhone(sale.customer_phone)}</div>
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap hidden lg:table-cell">
+                        <div className="text-xs text-gray-300 font-mono">{formatCpfCnpj(sale.customer_cpf)}</div>
                       </td>
                       <td className="px-2 lg:px-4 py-2 lg:py-4 whitespace-nowrap">
                         <div className="font-bold text-white text-sm">

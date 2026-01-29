@@ -65,24 +65,23 @@ export function getNameFromEmail(email: string): string {
 /**
  * Retorna o nome de exibição ideal para um usuário
  * 
- * Prioridade:
- * 1. Se nome válido existe → retorna o nome
- * 2. Se nome inválido/vazio → extrai do email
+ * REGRA: Sempre usa customer_name do checkout (campo obrigatório)
+ * Só extrai do email se realmente não existir nome válido
  * 
- * @param name Nome do usuário (pode ser null/undefined/inválido)
- * @param email Email do usuário (usado como fallback)
- * @param fallback Valor padrão se tudo falhar (default: 'Usuário')
+ * @param name Nome do usuário (customer_name do checkout)
+ * @param email Email do usuário (usado como fallback extremo)
+ * @param fallback Valor padrão se tudo falhar (default: 'Cliente')
  * @returns { displayName, isGenerated }
  */
 export function getDisplayName(
   name: string | null | undefined,
   email: string,
-  fallback: string = 'Usuário'
+  fallback: string = 'Cliente'
 ): {
   displayName: string
   isGenerated: boolean
 } {
-  // Se temos um nome válido, usar ele
+  // Se temos um nome válido do checkout, SEMPRE usar ele
   if (isValidDisplayName(name)) {
     return {
       displayName: name!.trim(),
@@ -90,7 +89,7 @@ export function getDisplayName(
     }
   }
   
-  // Caso contrário, tentar extrair do email
+  // Caso contrário, tentar extrair do email (apenas para casos extremos)
   if (email) {
     return {
       displayName: getNameFromEmail(email),
@@ -103,4 +102,50 @@ export function getDisplayName(
     displayName: fallback,
     isGenerated: true,
   }
+}
+
+/**
+ * Formata CPF/CNPJ para exibição
+ * 
+ * @example
+ * formatCpfCnpj('12345678900') // '123.456.789-00'
+ * formatCpfCnpj('12345678000190') // '12.345.678/0001-90'
+ */
+export function formatCpfCnpj(value: string | null | undefined): string {
+  if (!value) return '—'
+  
+  const cleaned = value.replace(/\D/g, '')
+  
+  if (cleaned.length === 11) {
+    // CPF: 123.456.789-00
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  } else if (cleaned.length === 14) {
+    // CNPJ: 12.345.678/0001-90
+    return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+  }
+  
+  return value // Retorna original se não for CPF nem CNPJ
+}
+
+/**
+ * Formata telefone para exibição
+ * 
+ * @example
+ * formatPhone('11999887766') // '(11) 99988-7766'
+ * formatPhone('1133334444') // '(11) 3333-4444'
+ */
+export function formatPhone(value: string | null | undefined): string {
+  if (!value) return '—'
+  
+  const cleaned = value.replace(/\D/g, '')
+  
+  if (cleaned.length === 11) {
+    // Celular: (11) 99988-7766
+    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  } else if (cleaned.length === 10) {
+    // Fixo: (11) 3333-4444
+    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  }
+  
+  return value // Retorna original se não for formato conhecido
 }

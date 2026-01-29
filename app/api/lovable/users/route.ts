@@ -23,8 +23,9 @@ export async function GET(request: NextRequest) {
     // Buscar clientes únicos da tabela sales (usando supabaseAdmin para bypass RLS)
     const { data: customers, error } = await supabaseAdmin
       .from('sales')
-      .select('customer_email, customer_name, customer_phone, order_status, created_at, total_amount')
-      .in('order_status', ['paid', 'provisioning', 'active'])
+      .select('customer_email, customer_name, customer_phone, customer_cpf, status, created_at, total_amount')
+      .in('status', ['paid', 'provisioning', 'active'])
+      .is('deleted_at', null) // 🗑️ Filtrar deletados
       .order('created_at', { ascending: false })
     
     if (error) {
@@ -43,7 +44,8 @@ export async function GET(request: NextRequest) {
           email: email,
           name: sale.customer_name,
           phone: sale.customer_phone,
-          status: sale.order_status,
+          cpf: sale.customer_cpf,
+          status: sale.status,
           created_at: sale.created_at,
           total_spent: sale.total_amount,
           purchase_count: 1
@@ -55,7 +57,11 @@ export async function GET(request: NextRequest) {
         // Manter a data mais recente
         if (new Date(sale.created_at) > new Date(acc[email].created_at)) {
           acc[email].created_at = sale.created_at
-          acc[email].status = sale.order_status
+          acc[email].status = sale.status
+          // Atualizar nome se o novo tiver mais informações (não for só username)
+          if (sale.customer_name && sale.customer_name.includes(' ') && !acc[email].name.includes(' ')) {
+            acc[email].name = sale.customer_name
+          }
         }
       }
       return acc

@@ -516,18 +516,22 @@ export async function getIntegrationLogs(filters?: {
     const { data, error } = await query
 
     if (error) {
+      console.error('❌ Erro ao buscar logs:', error)
       throw error
     }
 
+    console.log(`📊 Logs encontrados: ${data?.length || 0}`)
+
     return {
       success: true,
-      logs: data,
+      logs: data || [],
     }
   } catch (error: any) {
     console.error('❌ Erro ao buscar logs:', error)
     return {
       success: false,
       error: error.message,
+      logs: []
     }
   }
 }

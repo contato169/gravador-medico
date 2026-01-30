@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "migrate-phones": "curl -X POST http://localhost:3000/api/admin/migrate-phone-cpf",
+    "migrate-phones": "node scripts/migrate-phones.js",
     "backfill:checkout-attempts": "node scripts/backfill-checkout-attempts.js",
     "import:appmax-orders": "node scripts/import-appmax-orders.js",
     "sync:whatsapp": "node scripts/sync-whatsapp-history.js",

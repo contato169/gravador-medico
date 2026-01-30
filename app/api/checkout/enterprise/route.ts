@@ -111,13 +111,30 @@ export async function POST(request: NextRequest) {
 
     const { customer, amount, payment_method, mpToken, appmax_data, idempotencyKey, coupon_code, discount } = body
 
-    // 🔥 LOG DOS DADOS RECEBIDOS
+    // 🔥 VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS DO CLIENTE
+    if (!customer.name || !customer.email || !customer.phone || !customer.cpf) {
+      console.error('❌ Campos obrigatórios faltando:', {
+        has_name: !!customer.name,
+        has_email: !!customer.email,
+        has_phone: !!customer.phone,
+        has_cpf: !!customer.cpf
+      })
+      return NextResponse.json({
+        success: false,
+        error: 'Dados do cliente incompletos (nome, email, telefone e CPF são obrigatórios)'
+      }, { status: 400 })
+    }
+
+    // 🔥 LOG DOS DADOS RECEBIDOS (INCLUINDO TELEFONE)
     console.log('📦 Dados recebidos no checkout:', JSON.stringify({
       amount,
       payment_method,
       has_mpToken: !!mpToken,
       has_appmax_data: !!appmax_data,
       customer_email: customer.email,
+      customer_phone: customer.phone,
+      customer_cpf: customer.cpf,
+      customer_name: customer.name,
       idempotencyKey
     }, null, 2))
 

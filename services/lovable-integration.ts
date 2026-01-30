@@ -9,7 +9,8 @@ import { createClient } from '@supabase/supabase-js'
 const LOVABLE_EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_LOVABLE_EDGE_FUNCTION_URL || 
   'https://acouwzdniytqhaesgtpr.supabase.co/functions/v1/admin-user-manager'
 
-const API_SECRET = '26+Sucesso+GH'
+// ✅ Secret correto da Edge Function do Lovable
+const API_SECRET = process.env.LOVABLE_API_SECRET || '26+Sucesso+GH'
 
 // Função helper para criar cliente Supabase (apenas server-side)
 function getSupabaseClient() {

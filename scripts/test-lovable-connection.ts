@@ -6,7 +6,7 @@
 // =====================================================
 
 const LOVABLE_URL = 'https://acouwzdniytqhaesgtpr.supabase.co/functions/v1/admin-user-manager'
-const API_SECRET = 'webhook-appmax-2026-secure-key'
+const API_SECRET = '26+Sucesso+GH'
 
 async function testConnection() {
   console.log('🔍 Testando conexão com Lovable...\n')

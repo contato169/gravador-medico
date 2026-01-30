@@ -4,7 +4,7 @@ import { createLovableUser, generateSecurePassword } from '@/services/lovable-in
 import { supabaseAdmin } from '@/lib/supabase'
 
 const LOVABLE_URL = process.env.NEXT_PUBLIC_LOVABLE_EDGE_FUNCTION_URL || ''
-const API_SECRET = 'webhook-appmax-2026-secure-key'
+const API_SECRET = '26+Sucesso+GH'
 
 /**
  * POST /api/admin/test-email

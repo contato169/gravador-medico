@@ -7,7 +7,7 @@ require('dotenv').config({ path: '.env.local' });
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const LOVABLE_URL = process.env.NEXT_PUBLIC_LOVABLE_EDGE_FUNCTION_URL;
-const API_SECRET = 'webhook-appmax-2026-secure-key';
+const API_SECRET = '26+Sucesso+GH';
 
 // Cores do Design System
 const colors = {

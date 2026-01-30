@@ -15,7 +15,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY;
 const lovableEdgeFunctionUrl = process.env.NEXT_PUBLIC_LOVABLE_EDGE_FUNCTION_URL;
-const apiSecret = 'webhook-appmax-2026-secure-key';
+const apiSecret = '26+Sucesso+GH';
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variáveis SUPABASE não configuradas');

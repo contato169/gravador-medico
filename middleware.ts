@@ -254,7 +254,25 @@ export async function middleware(request: NextRequest) {
   // ==================================================
   // 3️⃣ ADMIN PROTECTION
   // ==================================================
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+  // Admin Future -> redireciona para /portal
+  if (pathname.startsWith('/admin-future')) {
+    const authResult = await checkAuth(request);
+    
+    if (!authResult.authenticated) {
+      // Redireciona para portal se não autenticado
+      const portalUrl = new URL('/portal', request.url);
+      return NextResponse.redirect(portalUrl);
+    }
+    
+    if (!authResult.isAdmin) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized', message: 'Admin access required' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+  // Admin original -> redireciona para /login
+  else if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     const authResult = await checkAuth(request);
     
     if (!authResult.authenticated) {

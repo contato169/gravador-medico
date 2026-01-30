@@ -10,6 +10,22 @@ const config: Config = {
   theme: {
   	extend: {
   		colors: {
+  			// === PALETA BLACK PIANO PREMIUM ===
+  			medical: {
+  				400: '#4ade80', // Verde claro para destaque
+  				500: '#22c55e', // Verde vibrante principal
+  				600: '#16a34a', // Verde escuro para hover
+  				700: '#15803d', // Verde profundo
+  			},
+  			piano: {
+  				black: '#0a0a0a', // Preto profundo, quase absoluto
+  				deep: '#050505', // Preto mais intenso
+  				surface: '#111111', // Superfície de cards
+  				gloss: 'rgba(255, 255, 255, 0.05)', // Brilho sutil para efeito vidro
+  				shine: 'rgba(255, 255, 255, 0.08)', // Reflexo mais visível
+  				border: 'rgba(255, 255, 255, 0.1)', // Bordas sutis
+  			},
+  			// === CORES ORIGINAIS ===
   			brand: {
   				'50': '#E8F8F5',
   				'100': '#D1F0EB',
@@ -96,7 +112,13 @@ const config: Config = {
   			strong: '0 8px 24px -4px rgba(26, 46, 56, 0.16)',
   			medical: '0 4px 20px -4px rgba(22, 160, 133, 0.15)',
   			cta: '0 4px 16px rgba(22, 160, 133, 0.24)',
-  			ctaHover: '0 8px 24px rgba(22, 160, 133, 0.32)'
+  			ctaHover: '0 8px 24px rgba(22, 160, 133, 0.32)',
+  			// === BLACK PIANO PREMIUM SHADOWS ===
+  			'piano-glow': '0 0 20px -5px rgba(34, 197, 94, 0.5)',
+  			'piano-glow-sm': '0 0 10px -3px rgba(34, 197, 94, 0.4)',
+  			'piano-glow-lg': '0 0 40px -10px rgba(34, 197, 94, 0.6)',
+  			'piano-subtle': '0 4px 20px -4px rgba(0, 0, 0, 0.8)',
+  			'piano-inner': 'inset 0 1px 0 rgba(255, 255, 255, 0.05)',
   		}
   	}
   },

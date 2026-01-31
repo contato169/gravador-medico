@@ -1,0 +1,301 @@
+/**
+ * 🧠 API Route - Performance Intelligence Engine
+ * 
+ * Endpoints para análise avançada de performance usando IA
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { 
+  runFullAIAnalysis, 
+  runQuickAnalysis, 
+  chatWithAI, 
+  runLocalAnalysis,
+  PerformanceData,
+  CampaignData,
+  AdSetData,
+  AdData
+} from '@/lib/ai-performance-engine';
+import { supabaseAdmin } from '@/lib/supabase';
+
+// Cache
+const analysisCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+
+// =====================================================
+// FUNÇÕES AUXILIARES
+// =====================================================
+
+function getDateRange(period: string): { start: string; end: string } {
+  const now = new Date();
+  const end = now.toISOString();
+  let start: Date;
+  
+  switch (period) {
+    case 'today':
+      start = new Date(now); start.setHours(0, 0, 0, 0);
+      break;
+    case 'yesterday':
+      start = new Date(now); start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0);
+      const endY = new Date(start); endY.setHours(23, 59, 59, 999);
+      return { start: start.toISOString(), end: endY.toISOString() };
+    case 'last_7d':
+      start = new Date(now); start.setDate(start.getDate() - 7);
+      break;
+    case 'last_14d':
+      start = new Date(now); start.setDate(start.getDate() - 14);
+      break;
+    case 'last_30d':
+      start = new Date(now); start.setDate(start.getDate() - 30);
+      break;
+    default:
+      start = new Date(now); start.setDate(start.getDate() - 7);
+  }
+  
+  return { start: start.toISOString(), end };
+}
+
+async function fetchRealSales(startDate: string, endDate: string) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('sales')
+      .select('total_amount, created_at')
+      .in('status', ['approved', 'paid', 'completed'])
+      .gte('created_at', startDate)
+      .lte('created_at', endDate);
+    
+    if (error || !data) {
+      return { totalRevenue: 0, totalSales: 0, avgTicket: 0, period: `${startDate} a ${endDate}` };
+    }
+    
+    const totalRevenue = data.reduce((sum, sale) => sum + Number(sale.total_amount || 0), 0);
+    const totalSales = data.length;
+    
+    return {
+      totalRevenue,
+      totalSales,
+      avgTicket: totalSales > 0 ? totalRevenue / totalSales : 0,
+      period: `${startDate} a ${endDate}`
+    };
+  } catch {
+    return { totalRevenue: 0, totalSales: 0, avgTicket: 0, period: '' };
+  }
+}
+
+async function fetchAdsData(baseUrl: string, period: string, level: string): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/ads/insights?period=${period}&level=${level}`,
+      { cache: 'no-store' }
+    );
+    if (!response.ok) return [];
+    return await response.json();
+  } catch {
+    return [];
+  }
+}
+
+function transformCampaignData(raw: any[]): CampaignData[] {
+  return raw.map(c => ({
+    id: c.campaign_id || c.id || '',
+    name: c.campaign_name || c.name || 'Sem nome',
+    status: c.effective_status || c.status || 'UNKNOWN',
+    spend: Number(c.spend || 0),
+    impressions: Number(c.impressions || 0),
+    clicks: Number(c.clicks || 0),
+    reach: Number(c.reach || 0),
+    ctr: Number(c.ctr || 0),
+    cpc: Number(c.cpc || 0),
+    cpm: Number(c.cpm || 0),
+    conversions: Number(c.conversions || 0),
+    revenue: Number(c.revenue || 0),
+    roas: Number(c.roas || 0)
+  }));
+}
+
+function transformAdSetData(raw: any[]): AdSetData[] {
+  return raw.map(a => ({
+    id: a.adset_id || a.id || '',
+    name: a.adset_name || a.name || 'Sem nome',
+    campaignName: a.campaign_name || '',
+    status: a.effective_status || a.status || 'UNKNOWN',
+    spend: Number(a.spend || 0),
+    impressions: Number(a.impressions || 0),
+    clicks: Number(a.clicks || 0),
+    ctr: Number(a.ctr || 0),
+    cpc: Number(a.cpc || 0),
+    conversions: Number(a.conversions || 0),
+    roas: Number(a.roas || 0),
+    frequency: Number(a.frequency || 0)
+  }));
+}
+
+function transformAdData(raw: any[]): AdData[] {
+  return raw.map(a => {
+    // Detectar tipo de criativo pelo nome
+    const name = (a.ad_name || a.name || '').toLowerCase();
+    let creativeType: 'video' | 'image' | 'carousel' | 'unknown' = 'unknown';
+    if (name.includes('video') || name.includes('vid') || name.includes('ugc')) creativeType = 'video';
+    else if (name.includes('carousel') || name.includes('carrossel')) creativeType = 'carousel';
+    else if (name.includes('image') || name.includes('img') || name.includes('static')) creativeType = 'image';
+    
+    return {
+      id: a.ad_id || a.id || '',
+      name: a.ad_name || a.name || 'Sem nome',
+      adsetName: a.adset_name || '',
+      campaignName: a.campaign_name || '',
+      status: a.effective_status || a.status || 'UNKNOWN',
+      spend: Number(a.spend || 0),
+      impressions: Number(a.impressions || 0),
+      clicks: Number(a.clicks || 0),
+      ctr: Number(a.ctr || 0),
+      cpc: Number(a.cpc || 0),
+      conversions: Number(a.conversions || 0),
+      creativeType
+    };
+  });
+}
+
+// =====================================================
+// ENDPOINTS
+// =====================================================
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'last_7d';
+    const type = searchParams.get('type') || 'full'; // full, quick, local
+    const forceRefresh = searchParams.get('refresh') === 'true';
+    
+    // Cache key
+    const cacheKey = `ai-analysis-${type}-${period}`;
+    const cached = analysisCache.get(cacheKey);
+    
+    if (!forceRefresh && cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return NextResponse.json({ ...cached.data, cached: true });
+    }
+    
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const { start, end } = getDateRange(period);
+    
+    console.log(`🧠 [AI Engine] Iniciando análise ${type} - Período: ${period}`);
+    
+    // Buscar todos os dados em paralelo
+    const [campaignsRaw, adSetsRaw, adsRaw, realSales] = await Promise.all([
+      fetchAdsData(baseUrl, period, 'campaign'),
+      fetchAdsData(baseUrl, period, 'adset'),
+      fetchAdsData(baseUrl, period, 'ad'),
+      fetchRealSales(start, end)
+    ]);
+    
+    console.log(`🧠 [AI Engine] Dados: ${campaignsRaw.length} campanhas, ${adSetsRaw.length} ad sets, ${adsRaw.length} ads`);
+    console.log(`🧠 [AI Engine] Vendas: ${realSales.totalSales} vendas, R$ ${realSales.totalRevenue.toFixed(2)}`);
+    
+    // Transformar dados
+    const performanceData: PerformanceData = {
+      campaigns: transformCampaignData(campaignsRaw),
+      adSets: transformAdSetData(adSetsRaw),
+      ads: transformAdData(adsRaw),
+      realSales,
+      period,
+      startDate: start,
+      endDate: end
+    };
+    
+    let result;
+    
+    if (type === 'local' || !process.env.OPENAI_API_KEY) {
+      // Análise local (sem API)
+      console.log(`🧠 [AI Engine] Usando análise LOCAL`);
+      result = runLocalAnalysis(performanceData);
+    } else if (type === 'quick') {
+      // Análise rápida
+      console.log(`🧠 [AI Engine] Análise RÁPIDA via OpenAI`);
+      const quickResult = await runQuickAnalysis(performanceData);
+      result = { analiseRapida: quickResult, metricas: runLocalAnalysis(performanceData).metricas };
+    } else {
+      // Análise completa via OpenAI
+      try {
+        console.log(`🧠 [AI Engine] Análise COMPLETA via OpenAI`);
+        result = await runFullAIAnalysis(performanceData);
+      } catch (error: any) {
+        console.error(`🧠 [AI Engine] Erro OpenAI, usando fallback local:`, error.message);
+        result = runLocalAnalysis(performanceData);
+        result = { ...result, warning: 'Usando análise local (OpenAI indisponível)' };
+      }
+    }
+    
+    // Salvar no cache
+    analysisCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    
+    return NextResponse.json({
+      ...result,
+      cached: false,
+      analyzedAt: new Date().toISOString(),
+      dataSource: {
+        campaigns: campaignsRaw.length,
+        adSets: adSetsRaw.length,
+        ads: adsRaw.length,
+        realSales: realSales.totalSales
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('❌ [AI Engine] Erro:', error);
+    return NextResponse.json(
+      { error: 'Erro ao processar análise de IA', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// Chat endpoint
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { message, period = 'last_7d', includeContext = true } = body;
+    
+    if (!message) {
+      return NextResponse.json({ error: 'Mensagem é obrigatória' }, { status: 400 });
+    }
+    
+    let context: PerformanceData | undefined;
+    
+    if (includeContext) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const { start, end } = getDateRange(period);
+      
+      const [campaignsRaw, adSetsRaw, adsRaw, realSales] = await Promise.all([
+        fetchAdsData(baseUrl, period, 'campaign'),
+        fetchAdsData(baseUrl, period, 'adset'),
+        fetchAdsData(baseUrl, period, 'ad'),
+        fetchRealSales(start, end)
+      ]);
+      
+      context = {
+        campaigns: transformCampaignData(campaignsRaw),
+        adSets: transformAdSetData(adSetsRaw),
+        ads: transformAdData(adsRaw),
+        realSales,
+        period,
+        startDate: start,
+        endDate: end
+      };
+    }
+    
+    console.log(`🧠 [AI Chat] Pergunta: "${message.substring(0, 50)}..."`);
+    
+    const response = await chatWithAI(message, context);
+    
+    return NextResponse.json({
+      response,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('❌ [AI Chat] Erro:', error);
+    return NextResponse.json(
+      { error: 'Erro ao processar chat', details: error.message },
+      { status: 500 }
+    );
+  }
+}

@@ -9,6 +9,7 @@ import {
   RefreshCw, Megaphone, Target, Filter, ArrowUpDown, PlayCircle, Facebook
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { SmartCampaignAdvisor } from '@/components/dashboard/SmartCampaignAdvisor';
 
 // Formatar moeda BRL
 const formatCurrency = (value: number) => {
@@ -300,6 +301,9 @@ export default function CampanhasPage() {
           <div className="text-2xl font-bold text-white">{formatCurrency(totals.revenue)}</div>
         </div>
       </div>
+
+      {/* � Smart Campaign Advisor */}
+      <SmartCampaignAdvisor period={selectedPeriod} />
 
       {/* Tabela de Campanhas */}
       <div className="bg-gradient-to-br from-gray-800/40 to-gray-900/60 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">

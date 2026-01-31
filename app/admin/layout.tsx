@@ -36,11 +36,13 @@ import {
   Heart,
   CreditCard,
   Megaphone,
-  Facebook
+  Facebook,
+  Brain
 } from 'lucide-react'
 import NotificationBell from '@/components/NotificationBell'
 import { WhatsAppNotificationProvider } from '@/components/WhatsAppNotificationProvider'
 import { NotificationProvider } from '@/components/NotificationProvider'
+import AIFloatingWidget from '@/components/ai/AIFloatingWidget'
 
 const automationItems = [
   { 
@@ -247,6 +249,15 @@ const menuItems = [
     label: 'Analytics', 
     href: '/admin/analytics',
     badge: 'GA4',
+    highlight: true
+  },
+  
+  // 🧠 AI PERFORMANCE (Motor de IA para tráfego pago)
+  { 
+    icon: Brain, 
+    label: 'AI Performance', 
+    href: '/admin/ai',
+    badge: 'IA',
     highlight: true
   },
   
@@ -1077,6 +1088,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </WhatsAppNotificationProvider>
           </div>
         </main>
+        
+        {/* AI Floating Widget - Disponível em todas as páginas admin */}
+        <AIFloatingWidget />
       </div>
       </div>
     </NotificationProvider>

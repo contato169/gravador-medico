@@ -13,6 +13,13 @@ import { CheckoutRequestSchema, sanitizeCPF } from '@/lib/validators/checkout';
 import { processProvisioningQueue } from '@/lib/provisioning-worker';
 import { nowBrazil } from '@/lib/timezone';
 
+// 🔒 Função helper para obter URL da app sem quebras de linha ou espaços
+function getAppUrl(): string {
+  const url = process.env.NEXT_PUBLIC_APP_URL || 'https://www.gravadormedico.com.br'
+  // Remove quebras de linha, espaços e barra final
+  return url.replace(/[\n\r\s]/g, '').replace(/\/$/, '')
+}
+
 // =====================================================
 // 🔧 CONFIGURAÇÃO DOS GATEWAYS
 // =====================================================
@@ -75,7 +82,7 @@ async function processMercadoPago(
           },
         },
         external_reference: orderId,
-        notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+        notification_url: `${getAppUrl()}/api/webhooks/mercadopago`,
       },
       requestOptions: {
         idempotencyKey: orderId,

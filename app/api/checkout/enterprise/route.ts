@@ -3,6 +3,14 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { createAppmaxOrder } from '@/lib/appmax'
 import { processProvisioningQueue } from '@/lib/provisioning-worker'
 import { nowBrazil } from '@/lib/timezone'
+import { processCardPaymentSDK, isRetryableError, isUserError, getErrorMessage } from '@/lib/mercadopago-sdk'
+
+// 🔒 Função helper para obter URL da app sem quebras de linha ou espaços
+function getAppUrl(): string {
+  const url = process.env.NEXT_PUBLIC_APP_URL || 'https://www.gravadormedico.com.br'
+  // Remove quebras de linha, espaços e barra final
+  return url.replace(/[\n\r\s]/g, '').replace(/\/$/, '')
+}
 
 /**
  * 🏢 CHECKOUT ENTERPRISE LEVEL
@@ -109,7 +117,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { customer, amount, payment_method, mpToken, appmax_data, idempotencyKey, coupon_code, discount, device_id, force_gateway } = body
+    const { customer, amount, payment_method, mpToken, appmax_data, idempotencyKey, coupon_code, discount, device_id, force_gateway, payment_method_id, issuer_id, installments } = body
 
     // 🔥 VALIDAÇÃO DE CAMPOS OBRIGATÓRIOS DO CLIENTE
     if (!customer.name || !customer.email || !customer.phone || !customer.cpf) {
@@ -187,6 +195,7 @@ export async function POST(request: NextRequest) {
         order_status: 'processing',
         status: 'pending', // Status legado (manter compatibilidade)
         payment_method: payment_method, // ✅ NOVO: salvar método de pagamento
+        payment_gateway: 'pending', // 🔥 CORREÇÃO: Definir gateway como pending até saber qual processou
         coupon_code: coupon_code || null, // ✅ NOVO: salvar código do cupom
         coupon_discount: discount || 0,   // ✅ NOVO: salvar valor do desconto
         discount: discount || 0,          // ✅ NOVO: compatibilidade
@@ -221,158 +230,89 @@ export async function POST(request: NextRequest) {
     console.log(`   payment_method: ${payment_method}`)
     console.log(`   mpToken exists: ${!!mpToken}`)
     console.log(`   mpToken value: ${mpToken ? mpToken.substring(0, 20) + '...' : 'NULL'}`)
+    console.log(`   payment_method_id: ${payment_method_id || 'N/A'}`)
+    console.log(`   issuer_id: ${issuer_id || 'N/A'}`)
     console.log(`   force_gateway: ${force_gateway || 'none'}`)
 
     if (payment_method === 'credit_card' && mpToken && force_gateway !== 'appmax') {
       const mpStartTime = Date.now()
       
-      // Montar payload FORA do try para poder logar em caso de erro
-      const mpPayload = {
-        token: mpToken,
-        transaction_amount: amount,
-        description: 'Gravador Médico - Acesso Vitalício',
-        // NÃO enviar payment_method_id - MP detecta automaticamente pelo token
-        installments: 1,
-        payer: {
-          email: customer.email,
-          first_name: customer.name?.split(' ')[0] || '',
-          last_name: customer.name?.split(' ').slice(1).join(' ') || '',
-          identification: {
-            type: customer.documentType || 'CPF', // CPF ou CNPJ
-            number: customer.cpf.replace(/\D/g, '')
-          }
-        },
-        external_reference: order.id, // ✅ Referência para cruzar dados
-        notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
-        statement_descriptor: 'GRAVADOR MEDICO',
-        // 🔒 Device ID para análise antifraude (obrigatório MP)
-        ...(device_id && { metadata: { device_id } }),
-        additional_info: {
-          items: [
-            {
-              id: 'metodo-gravador-medico-v1',
-              title: 'Método Gravador Médico',
-              description: 'Acesso ao método de transcrição de consultas com IA',
-              picture_url: 'https://gravadormedico.com.br/logo.png',
-              category_id: 'learnings',
-              quantity: 1,
-              unit_price: Number(amount)
-            }
-          ],
-          ip_address: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1',
+      try {
+        console.log('💳 [1/2] Tentando Mercado Pago (SDK v2)...')
+        console.log('🔐 Token MP recebido:', mpToken?.substring(0, 20) + '...')
+
+        // 🔥 USAR SDK OFICIAL DO MERCADO PAGO
+        const sdkResult = await processCardPaymentSDK({
+          token: mpToken,
+          transaction_amount: amount,
+          installments: installments || 1,
+          payment_method_id: payment_method_id || 'credit_card',
+          issuer_id: issuer_id || undefined,
           payer: {
+            email: customer.email,
             first_name: customer.name?.split(' ')[0] || '',
             last_name: customer.name?.split(' ').slice(1).join(' ') || '',
+            identification: {
+              type: (customer.documentType || 'CPF') as 'CPF' | 'CNPJ',
+              number: customer.cpf.replace(/\D/g, '')
+            },
             phone: {
               area_code: customer.phone?.replace(/\D/g, '').substring(0, 2) || '',
               number: customer.phone?.replace(/\D/g, '').substring(2) || ''
             }
-          }
-        }
-      }
-      
-      try {
-        console.log('💳 [1/2] Tentando Mercado Pago...')
-        console.log('🔐 Token MP recebido:', mpToken?.substring(0, 20) + '...')
-
-        // 🔥 LOG DETALHADO DO PAYLOAD
-        console.log('📦 PAYLOAD ENVIADO PARA MERCADO PAGO:', JSON.stringify({
-          transaction_amount: mpPayload.transaction_amount,
-          installments: mpPayload.installments,
-          payer_email: mpPayload.payer.email,
-          payer_cpf: mpPayload.payer.identification.number,
-          external_reference: mpPayload.external_reference,
-          has_token: !!mpPayload.token,
-          note: 'payment_method_id removido - MP detecta automaticamente pelo token'
-        }, null, 2))
+          },
+          external_reference: order.id,
+          description: 'Método Gravador Médico - Acesso Vitalício',
+          device_id: device_id,
+          ip_address: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1'
+        }, idempotencyKey)
         
-        // Criar AbortController para timeout de 30 segundos
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 30000)
-        
-        try {
-          const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-              'X-Idempotency-Key': idempotencyKey // ✅ Idempotência também no gateway
-            },
-            body: JSON.stringify(mpPayload),
-            signal: controller.signal
-          })
-          
-          clearTimeout(timeoutId)
-          
-          const mpResult = await mpResponse.json()
         const mpResponseTime = Date.now() - mpStartTime
 
         // 🔥 LOG DETALHADO DA RESPOSTA
-        console.log(`📊 RESPOSTA DO MERCADO PAGO (${mpResponseTime}ms):`, JSON.stringify({
-          status: mpResult.status,
-          status_detail: mpResult.status_detail,
-          payment_id: mpResult.id,
-          http_status: mpResponse.status,
-          message: mpResult.message,
-          cause: mpResult.cause
+        console.log(`📊 RESPOSTA DO MERCADO PAGO SDK (${mpResponseTime}ms):`, JSON.stringify({
+          success: sdkResult.success,
+          status: sdkResult.status,
+          status_detail: sdkResult.status_detail,
+          payment_id: sdkResult.payment_id
         }, null, 2))
 
-        // 🔥 SE ERRO, LOG COMPLETO
-        if (!mpResponse.ok || mpResult.status !== 'approved') {
-          console.error('❌ MERCADO PAGO RETORNOU ERRO OU RECUSA:')
-          console.error('HTTP Status:', mpResponse.status)
-          console.error('Response completa:', JSON.stringify(mpResult, null, 2))
-          
-          // 📝 Registrar erro detalhado no banco
-          await logCheckoutAttempt({
-            order_id: order.id,
-            gateway: 'mercadopago',
-            status: 'ERROR',
-            payload_sent: {
-              ...mpPayload,
-              token: mpPayload.token ? `${mpPayload.token.substring(0, 10)}...` : null // Ocultar token completo
-            },
-            response_data: mpResult,
-            error_response: mpResult,
-            error_message: mpResult.message || mpResult.status_detail || 'Pagamento recusado',
-            error_cause: mpResult.cause ? JSON.stringify(mpResult.cause) : null,
-            http_status: mpResponse.status
-          })
-        }
+        // 📝 Registrar tentativa no log
+        await logCheckoutAttempt({
+          order_id: order.id,
+          gateway: 'mercadopago',
+          status: sdkResult.success ? 'SUCCESS' : 'ERROR',
+          payload_sent: {
+            token: mpToken ? `${mpToken.substring(0, 10)}...` : null,
+            transaction_amount: amount,
+            payment_method_id,
+            payer_email: customer.email,
+            external_reference: order.id
+          },
+          response_data: {
+            payment_id: sdkResult.payment_id,
+            status: sdkResult.status,
+            status_detail: sdkResult.status_detail
+          },
+          error_message: sdkResult.error || null,
+          error_cause: sdkResult.error_code || null
+        })
 
         // Registrar tentativa em payment_attempts
         await supabaseAdmin.from('payment_attempts').insert({
           sale_id: order.id,
           provider: 'mercadopago',
-          gateway_transaction_id: mpResult.id,
-          status: mpResult.status === 'approved' ? 'success' : 'rejected',
-          rejection_code: mpResult.status_detail,
-          error_message: mpResult.status !== 'approved' ? mpResult.status_detail : null,
-          raw_response: mpResult,
+          gateway_transaction_id: sdkResult.payment_id?.toString(),
+          status: sdkResult.success ? 'success' : 'rejected',
+          rejection_code: sdkResult.status_detail,
+          error_message: !sdkResult.success ? sdkResult.status_detail : null,
+          raw_response: sdkResult.raw_response,
           response_time_ms: mpResponseTime
         })
 
         // ✅ MERCADO PAGO APROVOU
-        if (mpResult.status === 'approved') {
-          console.log('✅ [SUCCESS] Mercado Pago aprovou!')
-
-          // 📝 Registrar sucesso no banco
-          await logCheckoutAttempt({
-            order_id: order.id,
-            gateway: 'mercadopago',
-            status: 'SUCCESS',
-            payload_sent: {
-              ...mpPayload,
-              token: mpPayload.token ? `${mpPayload.token.substring(0, 10)}...` : null
-            },
-            response_data: {
-              id: mpResult.id,
-              status: mpResult.status,
-              status_detail: mpResult.status_detail,
-              payment_method_id: mpResult.payment_method_id
-            },
-            http_status: mpResponse.status
-          })
+        if (sdkResult.success && sdkResult.status === 'approved') {
+          console.log('✅ [SUCCESS] Mercado Pago aprovou via SDK!')
 
           // Atualizar pedido: processing → paid
           await supabaseAdmin
@@ -381,10 +321,10 @@ export async function POST(request: NextRequest) {
               order_status: 'paid',
               status: 'paid',
               payment_gateway: 'mercadopago',
-              mercadopago_payment_id: mpResult.id,
+              mercadopago_payment_id: sdkResult.payment_id?.toString(),
               current_gateway: 'mercadopago',
               fallback_used: false,
-              payment_details: mpResult
+              payment_details: sdkResult.raw_response
             })
             .eq('id', order.id)
 
@@ -415,7 +355,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({
             success: true,
             order_id: order.id,
-            payment_id: mpResult.id,
+            payment_id: sdkResult.payment_id,
             gateway_used: 'mercadopago',
             fallback_used: false,
             status: 'paid'
@@ -423,11 +363,11 @@ export async function POST(request: NextRequest) {
         }
 
         // ⚠️ MERCADO PAGO RECUSOU
-        const statusDetail = mpResult.status_detail || ''
+        const statusDetail = sdkResult.status_detail || ''
         console.log(`⚠️ MP recusou: ${statusDetail}`)
 
         // Erro de dados inválidos - NÃO tenta AppMax
-        if (MP_ERRORS_DONT_RETRY.includes(statusDetail)) {
+        if (isUserError(statusDetail)) {
           console.log('❌ Erro de validação, não tentará AppMax')
           
           await supabaseAdmin
@@ -440,7 +380,7 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({
             success: false,
-            error: 'Verifique os dados do cartão e tente novamente',
+            error: getErrorMessage(statusDetail),
             error_code: statusDetail,
             gateway_used: 'mercadopago',
             fallback_used: false
@@ -448,81 +388,37 @@ export async function POST(request: NextRequest) {
         }
 
         // Erro elegível para retry AppMax
-        console.log('🔄 Erro elegível para fallback, marcando para tentar AppMax...')
+        if (isRetryableError(statusDetail)) {
+          console.log('🔄 Erro elegível para fallback, marcando para tentar AppMax...')
+        } else {
+          console.log('🔄 Erro genérico, marcando para tentar AppMax...')
+        }
+        
         shouldTryAppmax = true
         mpTriedAndFailed = true
-        
-        } catch (fetchError: any) {
-          clearTimeout(timeoutId)
-          
-          // 🔥 Marcar para tentar AppMax após erro de rede
-          shouldTryAppmax = true
-          mpTriedAndFailed = true
-          
-          // 🔥 LOG DETALHADO DO ERRO DE REDE
-          console.error('❌ ERRO DE REDE/FETCH NO MERCADO PAGO:')
-          console.error('Nome do erro:', fetchError.name)
-          console.error('Mensagem:', fetchError.message)
-          console.error('Stack:', fetchError.stack)
-          
-          // 📝 Registrar erro de rede no banco
-          await logCheckoutAttempt({
-            order_id: order.id,
-            gateway: 'mercadopago',
-            status: 'ERROR',
-            payload_sent: {
-              ...mpPayload,
-              token: mpPayload.token ? `${mpPayload.token.substring(0, 10)}...` : null
-            },
-            error_response: {
-              error_name: fetchError.name,
-              error_message: fetchError.message,
-              error_stack: fetchError.stack
-            },
-            error_message: fetchError.message,
-            error_cause: fetchError.name
-          })
-          
-          // Tratar timeout especificamente
-          if (fetchError.name === 'AbortError') {
-            console.error('⏱️ TIMEOUT: Mercado Pago não respondeu em 30s')
-            throw new Error('Timeout: Mercado Pago não respondeu em 30s')
-          }
-          
-          // Outros erros de rede
-          throw fetchError
-        }
 
       } catch (mpError: any) {
         // 🔥 LOG DETALHADO DO ERRO GERAL
-        console.error('❌ ERRO CRÍTICO NO MERCADO PAGO:')
+        console.error('❌ ERRO CRÍTICO NO MERCADO PAGO SDK:')
         console.error('Tipo:', mpError.constructor.name)
         console.error('Mensagem:', mpError.message)
         console.error('Stack completa:', mpError.stack)
-        
-        // Se for erro HTTP, tentar extrair detalhes
-        if (mpError.response) {
-          console.error('HTTP Status:', mpError.response.status)
-          console.error('HTTP Data:', mpError.response.data)
-        }
         
         // 📝 Registrar erro crítico no banco
         await logCheckoutAttempt({
           order_id: order.id,
           gateway: 'mercadopago',
           status: 'ERROR',
-          payload_sent: mpPayload ? {
-            ...mpPayload,
-            token: mpPayload.token ? `${mpPayload.token.substring(0, 10)}...` : null
-          } : { error: 'payload não disponível' },
-          error_response: mpError.response?.data || {
+          payload_sent: {
+            token: mpToken ? `${mpToken.substring(0, 10)}...` : null,
+            transaction_amount: amount
+          },
+          error_response: {
             error_type: mpError.constructor.name,
-            error_message: mpError.message,
-            error_stack: mpError.stack
+            error_message: mpError.message
           },
           error_message: mpError.message,
-          error_cause: mpError.constructor.name,
-          http_status: mpError.response?.status
+          error_cause: mpError.constructor.name
         })
         
         // Registrar erro
@@ -532,7 +428,7 @@ export async function POST(request: NextRequest) {
           status: 'failed',
           error_message: mpError.message,
           raw_response: { error: mpError.message },
-          response_time_ms: Date.now() - startTime
+          response_time_ms: Date.now() - mpStartTime
         })
         
         // 🔥 Marcar para tentar AppMax após erro crítico do MP
@@ -592,7 +488,7 @@ export async function POST(request: NextRequest) {
                 }
               }
             },
-            notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago-enterprise`
+            notification_url: `${getAppUrl()}/api/webhooks/mercadopago-enterprise`
           })
         })
 

@@ -49,13 +49,16 @@ function setSecurityHeaders(response: NextResponse): NextResponse {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://sdk.mercadopago.com https://challenges.cloudflare.com https://www.googletagmanager.com https://connect.facebook.net",
-      "style-src 'self' 'unsafe-inline'",
+      // 🔥 Scripts: Mercado Pago SDK, Google Tag Manager, Facebook, Cloudflare
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://sdk.mercadopago.com https://*.mlstatic.com https://http2.mlstatic.com https://challenges.cloudflare.com https://www.googletagmanager.com https://connect.facebook.net",
+      "style-src 'self' 'unsafe-inline' https://*.mlstatic.com",
       "img-src 'self' blob: data: https:",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://*.mlstatic.com",
       "media-src 'self' data:", // ✅ Permite sons base64
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com https://api.mercadopago.com.br https://*.mercadolibre.com https://*.mercadopago.com https://secure-fields.mercadopago.com https://api.appmax.com.br https://www.google-analytics.com",
-      "frame-src 'self' https://challenges.cloudflare.com https://www.mercadolibre.com https://*.mercadolibre.com https://*.mercadopago.com https://secure-fields.mercadopago.com", // ✅ Secure Fields MP
+      // 🔥 Connect: Mercado Pago APIs + Bricks
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com https://api.mercadopago.com.br https://*.mercadolibre.com https://*.mercadopago.com https://secure-fields.mercadopago.com https://*.mlstatic.com https://events.mercadopago.com https://api.appmax.com.br https://www.google-analytics.com https://www.googletagmanager.com",
+      // 🔥 Frames: Mercado Pago Bricks e Secure Fields
+      "frame-src 'self' https://challenges.cloudflare.com https://www.mercadolibre.com https://*.mercadolibre.com https://*.mercadopago.com https://secure-fields.mercadopago.com https://*.mlstatic.com",
       "frame-ancestors 'none'",
       "upgrade-insecure-requests"
     ].join('; ')

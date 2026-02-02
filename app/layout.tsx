@@ -85,8 +85,8 @@ export default async function RootLayout({
         />
         {/* End Google tag */}
 
-        {/* Mercado Pago SDK */}
-        <script src="https://sdk.mercadopago.com/js/v2" />
+        {/* Mercado Pago SDK - REMOVIDO - Agora usando @mercadopago/sdk-react */}
+        {/* <script src="https://sdk.mercadopago.com/js/v2" /> */}
         
         {/* Cloudflare Turnstile (Anti-Bot) */}
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />

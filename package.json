@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@google-analytics/data": "^5.2.1",
+    "@mercadopago/sdk-react": "^1.0.7",
     "@react-email/render": "^2.0.4",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",

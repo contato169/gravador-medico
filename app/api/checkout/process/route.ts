@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
+// 🔒 Função helper para obter URL da app sem quebras de linha ou espaços
+function getAppUrl(): string {
+  const url = process.env.NEXT_PUBLIC_APP_URL || 'https://www.gravadormedico.com.br'
+  // Remove quebras de linha, espaços e barra final
+  return url.replace(/[\n\r\s]/g, '').replace(/\/$/, '')
+}
+
 /**
  * 🛡️ ROTA PCI COMPLIANT - TOKENIZAÇÃO DUPLA
  * 
@@ -88,7 +95,7 @@ export async function POST(request: NextRequest) {
                 number: customer.cpf.replace(/\D/g, '')
               }
             },
-            notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+            notification_url: `${getAppUrl()}/api/webhooks/mercadopago`,
             statement_descriptor: 'GRAVADOR MEDICO'
           })
         })

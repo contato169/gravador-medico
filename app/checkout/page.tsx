@@ -7,11 +7,45 @@ import useEmblaCarousel from 'embla-carousel-react'
 import Autoplay from 'embla-carousel-autoplay'
 import { saveAbandonedCart, markCartAsRecovered } from '@/lib/abandonedCart'
 import { supabase } from '@/lib/supabase'
-import { useMercadoPago } from '@/hooks/useMercadoPago'
+// Removido: useMercadoPago - agora usamos CardPaymentBrick
 import { validateCPF, formatCPF } from '@/lib/cpf'
 import { validateCNPJ, formatCNPJ, consultarCNPJ } from '@/lib/cnpj-api'
 import { useAutoSave } from '@/hooks/useAutoSave'
-import SecureCardForm, { SecureCardFormHandle } from '@/components/SecureCardForm'
+// 🆕 Novo: Card Payment Brick (substitui SecureCardForm)
+import dynamic from 'next/dynamic'
+
+// Interface para props do CardPaymentBrick
+interface CardPaymentBrickProps {
+  amount: number
+  email: string
+  cpf: string
+  customerName: string
+  customerPhone: string
+  documentType: 'CPF' | 'CNPJ'
+  companyName?: string
+  orderBumps?: { product_id: string; quantity: number }[]
+  discount?: number
+  couponCode?: string | null
+  sessionId?: string
+  idempotencyKey: string
+  onSuccess: (result: { orderId: string; status: string }) => void
+  onError: (error: string) => void
+  onReady?: () => void
+}
+
+// Importação dinâmica para SSR: false (requerido pelo Mercado Pago)
+const CardPaymentBrick = dynamic<CardPaymentBrickProps>(
+  () => import('@/components/CardPaymentBrick').then(mod => mod.default as any),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+        <span className="ml-3 text-gray-600">Carregando formulário seguro...</span>
+      </div>
+    )
+  }
+)
 import {
   Check,
   Clock,
@@ -42,9 +76,32 @@ import {
   ShieldCheck,
 } from "lucide-react"
 
+// Função simples para gerar Device ID (antifraude)
+function generateDeviceId(): string {
+  // Usa fingerprint básico do navegador
+  const nav = typeof navigator !== 'undefined' ? navigator : null
+  const screen = typeof window !== 'undefined' ? window.screen : null
+  const fingerprint = [
+    nav?.userAgent || '',
+    nav?.language || '',
+    screen?.width || 0,
+    screen?.height || 0,
+    new Date().getTimezoneOffset()
+  ].join('|')
+  
+  // Hash simples
+  let hash = 0
+  for (let i = 0; i < fingerprint.length; i++) {
+    const char = fingerprint.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return `device_${Math.abs(hash).toString(16)}_${Date.now().toString(36)}`
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
-  const { mp, loading: mpLoading, createCardToken, getDeviceId } = useMercadoPago()
+  // Removido: useMercadoPago() - agora usamos CardPaymentBrick do SDK React
   
   // Estados principais
   const [currentStep, setCurrentStep] = useState(1) // 1: Dados, 2: Order Bumps, 3: Pagamento
@@ -95,10 +152,14 @@ export default function CheckoutPage() {
     installments: 1,
   })
   
-  // 🔒 Secure Fields (Mercado Pago PCI Compliance)
-  const secureCardFormRef = useRef<SecureCardFormHandle>(null)
-  const [secureCardToken, setSecureCardToken] = useState<string | null>(null)
-  const [secureCardReady, setSecureCardReady] = useState(false)
+  // 🆕 Card Payment Brick (Mercado Pago PCI Compliance)
+  // O Brick gerencia seu próprio estado - não precisamos mais de refs
+  const [brickPaymentData, setBrickPaymentData] = useState<{
+    token: string
+    installments: number
+    paymentMethodId: string
+    issuerId: string
+  } | null>(null)
   
   // 🔄 Fallback AppMax - Modal de retentativa
   const [showAppmaxFallback, setShowAppmaxFallback] = useState(false)
@@ -577,8 +638,10 @@ export default function CheckoutPage() {
 
   const isStep3Valid = () => {
     if (paymentMethod === "pix") return true
-    // Verifica se expiry tem formato MM/AA (5 caracteres)
-    return cardData.number && cardData.holderName && cardData.expiry.length === 5 && cardData.cvv
+    // 🔥 Com Secure Fields, não temos acesso aos dados do cartão
+    // Apenas verificamos se o formulário está montado (sempre true quando visible)
+    // A validação real acontece no momento do submit
+    return true
   }
 
   const formatPaymentError = (error: any) => {
@@ -766,7 +829,7 @@ export default function CheckoutPage() {
       }
 
       // 🔒 Obter Device ID para análise antifraude (obrigatório MP)
-      const deviceId = getDeviceId()
+      const deviceId = generateDeviceId()
 
       // Formato enterprise: customer object + amount
       const payload: any = {
@@ -788,32 +851,26 @@ export default function CheckoutPage() {
         device_id: deviceId, // 🔒 Device ID para antifraude MP
       }
       
-      // 🔐 TOKENIZAÇÃO SEGURA - Se for cartão, usa Secure Fields (PCI Compliant)
+      // 🆕 CARD PAYMENT BRICK - Se for cartão, o token é gerado pelo Brick
       if (paymentMethod === 'credit') {
-        console.log('🔐 Gerando token via Secure Fields...')
+        console.log('� Pagamento com cartão - Usando Card Payment Brick')
         
-        // Gera token no momento do submit
-        if (!secureCardFormRef.current) {
-          throw new Error('Formulário de cartão não está pronto. Tente novamente.')
+        // Com o Brick, o token é gerado automaticamente no onSubmit do Brick
+        // Não precisamos mais gerar manualmente aqui
+        // O fluxo é: usuário clica no botão do Brick -> Brick gera token -> callback handleBrickSubmit
+        
+        if (!brickPaymentData || !brickPaymentData.token) {
+          throw new Error('Por favor, preencha os dados do cartão e clique em "Pagar" no formulário.')
         }
         
-        const tokenData = await secureCardFormRef.current.generateToken()
+        console.log('✅ Token do Brick:', brickPaymentData.token.substring(0, 20) + '...')
         
-        if (!tokenData || !tokenData.token) {
-          throw new Error('Por favor, preencha os dados do cartão corretamente.')
-        }
+        payload.mpToken = brickPaymentData.token
+        payload.installments = brickPaymentData.installments || cardData.installments
+        payload.payment_method_id = brickPaymentData.paymentMethodId
+        payload.issuer_id = brickPaymentData.issuerId
         
-        console.log('✅ Token gerado:', tokenData.token.substring(0, 20) + '...')
-        
-        payload.mpToken = tokenData.token
-        payload.installments = tokenData.installments || cardData.installments
-        
-        // Atualiza device_id se retornado do Secure Fields
-        if (tokenData.deviceId) {
-          payload.device_id = tokenData.deviceId
-        }
-        
-        // ⚠️ IMPORTANTE: Com Secure Fields, NÃO temos mais acesso aos dados brutos do cartão
+        // ⚠️ IMPORTANTE: Com Brick, NÃO temos mais acesso aos dados brutos do cartão
         // O fallback AppMax não funcionará mais para novos pagamentos - isso é esperado para PCI Compliance
         // Os dados do cartão nunca passam pelo nosso servidor
       }
@@ -1596,41 +1653,30 @@ export default function CheckoutPage() {
                       </button>
                     </div>
 
-                    {/* Formulário de Cartão - Secure Fields (PCI Compliant) */}
+                    {/* 🆕 Formulário de Cartão - Card Payment Brick (PCI Compliant) */}
                     {paymentMethod === "credit" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-4"
-                      >
-                        <SecureCardForm
-                          ref={secureCardFormRef}
+                      <div className="space-y-4">
+                        <CardPaymentBrick
                           amount={total}
-                          cpf={formData.cpf.replace(/\D/g, '')}
+                          email={formData.email}
+                          cpf={formData.cpf}
+                          customerName={formData.name}
+                          customerPhone={formData.phone}
                           documentType={formData.documentType}
-                          disabled={loading}
-                          onTokenReady={(tokenData) => {
-                            console.log('🔐 Token Secure Fields pronto:', tokenData.token.substring(0, 20) + '...')
-                            setSecureCardToken(tokenData.token)
-                            setCardData(prev => ({ ...prev, installments: tokenData.installments }))
-                            setSecureCardReady(true)
-                          }}
-                          onError={(errorMessage) => {
-                            console.error('❌ Erro Secure Fields:', errorMessage)
-                            alert(`Erro no cartão: ${errorMessage}`)
-                          }}
+                          companyName={formData.companyName}
+                          orderBumps={[]}
+                          discount={cupomDiscount > 0 ? cupomDiscount : undefined}
+                          couponCode={appliedCupom}
+                          sessionId={sessionId || undefined}
+                          idempotencyKey={idempotencyKey}
+                          onSuccess={() => {}}
+                          onReady={() => {}}
+                          onError={() => {}}
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Parcelamento em até {maxInstallments}x • Taxa: 2,49% a.m.
                         </p>
-                        <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-2 rounded-lg">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-                          </svg>
-                          <span>Pagamento seguro com Mercado Pago - Seus dados estão protegidos</span>
-                        </div>
-                      </motion.div>
+                      </div>
                     )}
 
                     {/* Mensagem PIX com dados do recebedor */}
@@ -1696,23 +1742,26 @@ export default function CheckoutPage() {
                       <span>Voltar</span>
                     </button>
                     
-                    <button
-                      onClick={handleCheckout}
-                      disabled={loading || !isStep3Valid()}
-                      className="flex-[2] bg-gradient-to-r from-green-600 to-green-500 text-white py-4 rounded-xl font-black text-lg hover:from-green-700 hover:to-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                    >
-                      {loading ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Processando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="w-5 h-5" />
-                          <span>Finalizar Compra Segura</span>
-                        </>
-                      )}
-                    </button>
+                    {/* Botão de Finalizar - Só aparece para PIX (Cartão usa botão do Brick) */}
+                    {paymentMethod === "pix" && (
+                      <button
+                        onClick={handleCheckout}
+                        disabled={loading || !isStep3Valid()}
+                        className="flex-[2] bg-gradient-to-r from-green-600 to-green-500 text-white py-4 rounded-xl font-black text-lg hover:from-green-700 hover:to-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                      >
+                        {loading ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Processando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-5 h-5" />
+                            <span>Gerar PIX</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}

@@ -50,6 +50,12 @@ const SecureCardForm = forwardRef<SecureCardFormHandle, SecureCardFormProps>(({
   const cardFormRef = useRef<any>(null)
   const initRef = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
+  
+  // 🔥 Ref para resolver/rejeitar Promise do token (usado no callback onCardTokenReceived)
+  const tokenResolverRef = useRef<{
+    resolve: (data: any) => void
+    reject: (error: Error) => void
+  } | null>(null)
 
   useEffect(() => {
     if (initRef.current || disabled) return
@@ -167,10 +173,36 @@ const SecureCardForm = forwardRef<SecureCardFormHandle, SecureCardFormProps>(({
               }
             },
             onCardTokenReceived: (err: any, token: string) => {
+              console.log('🔔 onCardTokenReceived:', { err, hasToken: !!token })
+              
               if (err) {
-                console.error('❌ Erro no token:', err)
-              } else {
-                console.log('✅ Token recebido:', token?.substring(0, 20) + '...')
+                console.error('❌ Erro no token (callback):', err)
+                if (tokenResolverRef.current) {
+                  const errorMsg = err?.message || err?.cause?.[0]?.description || 'Erro ao processar cartão'
+                  tokenResolverRef.current.reject(new Error(errorMsg))
+                  tokenResolverRef.current = null
+                }
+              } else if (token) {
+                console.log('✅ Token recebido (callback):', token?.substring(0, 20) + '...')
+                if (tokenResolverRef.current) {
+                  const formData = cardFormRef.current?.getCardFormData() || {}
+                  
+                  let deviceId = null
+                  try {
+                    deviceId = window.MercadoPago?.deviceId || null
+                  } catch (e) {}
+
+                  const tokenData = {
+                    token: token,
+                    installments: parseInt(formData?.installments) || 1,
+                    paymentMethodId: formData?.paymentMethodId || '',
+                    issuerId: formData?.issuerId || '',
+                    deviceId
+                  }
+                  
+                  tokenResolverRef.current.resolve(tokenData)
+                  tokenResolverRef.current = null
+                }
               }
             },
             onValidityChange: (err: any, field: string) => {
@@ -215,6 +247,7 @@ const SecureCardForm = forwardRef<SecureCardFormHandle, SecureCardFormProps>(({
     deviceId: string | null
   } | null> => {
     if (!cardFormRef.current || isProcessing) {
+      console.error('❌ cardFormRef não disponível ou processando')
       return null
     }
 
@@ -222,38 +255,87 @@ const SecureCardForm = forwardRef<SecureCardFormHandle, SecureCardFormProps>(({
       setIsProcessing(true)
       setError(null)
 
-      console.log('🔐 Gerando token do cartão...')
+      console.log('🔐 ============================================')
+      console.log('🔐 GERANDO TOKEN DO CARTÃO')
+      console.log('🔐 ============================================')
       
-      const formData = cardFormRef.current.getCardFormData()
+      // Verificar formData atual
+      const formData = cardFormRef.current.getCardFormData() || {}
       
-      console.log('📦 Dados do formulário:', {
+      console.log('📦 FormData:', {
         hasToken: !!formData.token,
         paymentMethodId: formData.paymentMethodId,
-        installments: formData.installments
+        installments: formData.installments,
+        cardNumber: formData.cardNumber ? 'PRESENTE' : 'AUSENTE'
       })
 
-      if (!formData.token) {
-        throw new Error('Por favor, preencha todos os dados do cartão')
+      // 1. Se já tem token no formData, usar diretamente
+      if (formData.token) {
+        console.log('✅ Token já existe no formData!')
+        
+        let deviceId = null
+        try {
+          deviceId = window.MercadoPago?.deviceId || null
+        } catch (e) {}
+
+        const tokenData = {
+          token: formData.token,
+          installments: parseInt(formData.installments) || 1,
+          paymentMethodId: formData.paymentMethodId || '',
+          issuerId: formData.issuerId || '',
+          deviceId
+        }
+
+        onTokenReady(tokenData)
+        return tokenData
       }
 
-      // Obter device ID
-      let deviceId = null
-      try {
-        deviceId = window.MercadoPago?.deviceId || null
-      } catch (e) {}
-
-      const tokenData = {
-        token: formData.token,
-        installments: parseInt(formData.installments) || 1,
-        paymentMethodId: formData.paymentMethodId || '',
-        issuerId: formData.issuerId || '',
-        deviceId
-      }
-
-      // Também chama callback para manter compatibilidade
-      onTokenReady(tokenData)
+      // 2. Usar o callback do CardForm - configurar Promise e fazer submit
+      console.log('📤 Configurando Promise para receber token via callback...')
       
-      return tokenData
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          tokenResolverRef.current = null
+          setIsProcessing(false)
+          const error = new Error('Tempo esgotado. Verifique os dados do cartão.')
+          setError(error.message)
+          onError(error.message)
+          reject(error)
+        }, 20000) // 20 segundos
+        
+        tokenResolverRef.current = {
+          resolve: (data: any) => {
+            clearTimeout(timeout)
+            setIsProcessing(false)
+            console.log('✅ Token resolvido:', data.token?.substring(0, 20) + '...')
+            onTokenReady(data)
+            resolve(data)
+          },
+          reject: (error: Error) => {
+            clearTimeout(timeout)
+            setIsProcessing(false)
+            console.error('❌ Erro no token:', error.message)
+            setError(error.message)
+            onError(error.message)
+            reject(error)
+          }
+        }
+        
+        // Disparar submit do CardForm (isso vai gerar o token e chamar onCardTokenReceived)
+        console.log('📤 Chamando cardForm.submit()...')
+        
+        try {
+          cardFormRef.current.submit()
+        } catch (submitError: any) {
+          clearTimeout(timeout)
+          tokenResolverRef.current = null
+          setIsProcessing(false)
+          console.error('❌ Erro no submit:', submitError)
+          setError('Erro ao processar. Tente novamente.')
+          onError('Erro ao processar. Tente novamente.')
+          reject(submitError)
+        }
+      })
 
     } catch (err: any) {
       console.error('❌ Erro ao gerar token:', err)

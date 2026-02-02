@@ -307,15 +307,65 @@ export async function POST(request: NextRequest) {
     let saleId: string | null = null;
     
     try {
-      // Tentar atualizar pelo mercadopago_payment_id
-      const { data: existingSale } = await supabaseAdmin
+      // 🔥 CORREÇÃO: Buscar venda existente em MÚLTIPLAS formas
+      // 1. Por mercadopago_payment_id (se já foi processado antes)
+      // 2. Por external_reference (ID da venda criada pelo checkout)
+      // 3. Por ID direto (se external_reference é um UUID válido)
+      
+      let existingSale = null;
+      
+      // Tentativa 1: Buscar por mercadopago_payment_id
+      const { data: saleByPaymentId } = await supabaseAdmin
         .from('sales')
-        .select('id')
+        .select('id, mercadopago_payment_id')
         .eq('mercadopago_payment_id', paymentId)
         .maybeSingle();
       
+      if (saleByPaymentId) {
+        existingSale = saleByPaymentId;
+        console.log(`[MP Webhook] ✅ Sale encontrada por payment_id: ${existingSale.id}`);
+      }
+      
+      // Tentativa 2: Buscar por external_reference (ID da venda original)
+      if (!existingSale && externalReference) {
+        // Se external_reference parece um UUID, buscar diretamente por ID
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        
+        if (uuidRegex.test(externalReference)) {
+          const { data: saleById } = await supabaseAdmin
+            .from('sales')
+            .select('id, mercadopago_payment_id')
+            .eq('id', externalReference)
+            .maybeSingle();
+          
+          if (saleById) {
+            existingSale = saleById;
+            console.log(`[MP Webhook] ✅ Sale encontrada por ID (external_reference): ${existingSale.id}`);
+          }
+        }
+        
+        // Também buscar por external_reference como campo
+        if (!existingSale) {
+          const { data: saleByRef } = await supabaseAdmin
+            .from('sales')
+            .select('id, mercadopago_payment_id')
+            .eq('external_reference', externalReference)
+            .maybeSingle();
+          
+          if (saleByRef) {
+            existingSale = saleByRef;
+            console.log(`[MP Webhook] ✅ Sale encontrada por external_reference: ${existingSale.id}`);
+          }
+        }
+      }
+      
       if (existingSale) {
-        // Atualizar venda existente
+        // ✅ ATUALIZAR venda existente (NUNCA criar duplicada!)
+        // Adicionar mercadopago_payment_id se ainda não tinha
+        if (!existingSale.mercadopago_payment_id) {
+          salePayload.mercadopago_payment_id = paymentId;
+        }
+        
         const { data: updatedSale } = await supabaseAdmin
           .from('sales')
           .update(salePayload)
@@ -326,39 +376,31 @@ export async function POST(request: NextRequest) {
         saleId = updatedSale?.id || existingSale.id;
         console.log(`[MP Webhook] ✅ Sale atualizada: ${saleId}`);
       } else {
-        // Criar nova venda
-        salePayload.created_at = now;
+        // ⚠️ CORREÇÃO: NÃO criar nova venda via webhook!
+        // Se chegou aqui, é provável que o checkout ainda não inseriu a venda
+        // ou há um problema de sincronização. Logar e retornar 202 (retry later)
+        console.warn(`[MP Webhook] ⚠️ Venda não encontrada para payment ${paymentId} / ref ${externalReference}`);
+        console.warn(`[MP Webhook] ⚠️ NÃO criando nova venda - o checkout deve ter criado`);
         
-        const { data: newSale, error: saleError } = await supabaseAdmin
-          .from('sales')
-          .insert(salePayload)
-          .select('id')
-          .single();
-        
-        if (saleError) {
-          console.error('❌ Erro ao criar sale:', saleError);
-          // Tentar sem campos opcionais
-          delete salePayload.utm_source;
-          delete salePayload.utm_medium;
-          delete salePayload.utm_campaign;
-          
-          const { data: fallbackSale } = await supabaseAdmin
-            .from('sales')
-            .insert(salePayload)
-            .select('id')
-            .single();
-          
-          saleId = fallbackSale?.id || null;
-        } else {
-          saleId = newSale?.id || null;
+        // Marcar log para reprocessamento
+        if (webhookLog) {
+          await supabaseAdmin
+            .from('webhook_logs')
+            .update({ 
+              processed: false, 
+              error_message: `Venda não encontrada - aguardando checkout criar. PaymentID: ${paymentId}, Ref: ${externalReference}`
+            })
+            .eq('id', webhookLog.id);
         }
         
-        if (saleId) {
-          console.log(`[MP Webhook] ✅ Nova sale criada: ${saleId}`);
-        }
+        // Retornar 202 para MP tentar novamente mais tarde
+        return NextResponse.json({ 
+          received: true, 
+          message: 'Accepted - sale not found, will retry' 
+        }, { status: 202 });
       }
     } catch (error) {
-      console.error('❌ Erro ao salvar sale:', error);
+      console.error('❌ Erro ao buscar/atualizar sale:', error);
     }
     
     // ==================================================

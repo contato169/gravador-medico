@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { Home, Compass, Wrench, ShoppingBag, User, FileText, BarChart3, ShoppingCart, MessageSquare, MessageCircle, Target, Ticket, Users, Mail, CreditCard } from "lucide-react"
+import { Home, Compass, Wrench, ShoppingBag, User, FileText, BarChart3, ShoppingCart, MessageSquare, MessageCircle, Target, Ticket, Users, Mail, CreditCard, DollarSign } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import NotificationBell from "./NotificationBell"
@@ -12,6 +12,7 @@ interface NavItem {
   href: string
   label: string
   description: string
+  separator?: boolean // Para adicionar separador visual
 }
 
 export default function DockSidebar() {
@@ -25,64 +26,37 @@ export default function DockSidebar() {
       id: "home",
       icon: <Home className="w-6 h-6" />,
       href: "/dashboard",
-      label: "Início",
+      label: "Visão Geral",
       description: "Seu centro de comando",
     },
+    // ═══════════════════════════════════════
+    // ITENS PRINCIPAIS (STANDALONE)
+    // ═══════════════════════════════════════
+    {
+      id: "sales",
+      icon: <DollarSign className="w-6 h-6" />,
+      href: "/admin/sales",
+      label: "Vendas",
+      description: "Central de vendas",
+      separator: true,
+    },
+    {
+      id: "emails",
+      icon: <Mail className="w-6 h-6" />,
+      href: "/admin/emails",
+      label: "E-mails",
+      description: "Gestão de e-mails",
+    },
+    // ═══════════════════════════════════════
+    // FERRAMENTAS DE ANÁLISE
+    // ═══════════════════════════════════════
     {
       id: "payments",
       icon: <CreditCard className="w-6 h-6" />,
       href: "/admin/payments",
       label: "Pagamentos",
       description: "Análise MP + AppMax",
-    },
-    {
-      id: "templates",
-      icon: <FileText className="w-6 h-6" />,
-      href: "/dashboard/templates",
-      label: "Templates",
-      description: "Prompts por especialidade",
-    },
-    {
-      id: "whatsapp",
-      icon: <MessageSquare className="w-6 h-6" />,
-      href: "/dashboard/whatsapp",
-      label: "WhatsApp",
-      description: "Inbox de conversas",
-    },
-    {
-      id: "tracking",
-      icon: <Target className="w-6 h-6" />,
-      href: "/admin/tracking",
-      label: "Tracking",
-      description: "Rastreamento e atribuição",
-    },
-    {
-      id: "cupons",
-      icon: <Ticket className="w-6 h-6" />,
-      href: "/admin/cupons",
-      label: "Cupons",
-      description: "Gerenciar descontos",
-    },
-    {
-      id: "lovable-users",
-      icon: <Users className="w-6 h-6" />,
-      href: "/admin/lovable/users",
-      label: "Lovable Users",
-      description: "Gerenciar usuários",
-    },
-    {
-      id: "lovable-emails",
-      icon: <Mail className="w-6 h-6" />,
-      href: "/admin/lovable/emails",
-      label: "Lovable Logs",
-      description: "Logs de integração",
-    },
-    {
-      id: "chat",
-      icon: <MessageCircle className="w-6 h-6" />,
-      href: "/admin/chat",
-      label: "Chat Interno",
-      description: "Conversar com admins",
+      separator: true,
     },
     {
       id: "analytics",
@@ -92,25 +66,65 @@ export default function DockSidebar() {
       description: "Dados e estatísticas",
     },
     {
+      id: "tracking",
+      icon: <Target className="w-6 h-6" />,
+      href: "/admin/tracking",
+      label: "Tracking",
+      description: "Rastreamento e atribuição",
+    },
+    // ═══════════════════════════════════════
+    // GESTÃO
+    // ═══════════════════════════════════════
+    {
+      id: "cupons",
+      icon: <Ticket className="w-6 h-6" />,
+      href: "/admin/cupons",
+      label: "Cupons",
+      description: "Gerenciar descontos",
+      separator: true,
+    },
+    {
+      id: "lovable-users",
+      icon: <Users className="w-6 h-6" />,
+      href: "/admin/lovable/users",
+      label: "Usuários",
+      description: "Gerenciar usuários Lovable",
+    },
+    {
       id: "abandoned-carts",
       icon: <ShoppingCart className="w-6 h-6" />,
       href: "/dashboard/abandoned-carts",
       label: "Carrinhos",
       description: "Recuperar vendas",
     },
+    // ═══════════════════════════════════════
+    // COMUNICAÇÃO
+    // ═══════════════════════════════════════
     {
-      id: "journey",
-      icon: <Compass className="w-6 h-6" />,
-      href: "#journey",
-      label: "Jornada",
-      description: "Configuração guiada",
+      id: "whatsapp",
+      icon: <MessageSquare className="w-6 h-6" />,
+      href: "/dashboard/whatsapp",
+      label: "WhatsApp",
+      description: "Inbox de conversas",
+      separator: true,
     },
     {
-      id: "tools",
-      icon: <Wrench className="w-6 h-6" />,
-      href: "#tools",
-      label: "Ferramentas",
-      description: "Apps de potencialização",
+      id: "chat",
+      icon: <MessageCircle className="w-6 h-6" />,
+      href: "/admin/chat",
+      label: "Chat Interno",
+      description: "Conversar com admins",
+    },
+    // ═══════════════════════════════════════
+    // CONFIGURAÇÃO
+    // ═══════════════════════════════════════
+    {
+      id: "templates",
+      icon: <FileText className="w-6 h-6" />,
+      href: "/dashboard/templates",
+      label: "Templates",
+      description: "Prompts por especialidade",
+      separator: true,
     },
     {
       id: "store",
@@ -163,15 +177,18 @@ export default function DockSidebar() {
   <div className="absolute inset-0 bg-gradient-to-b from-brand-500/5 to-brand-500/5 pointer-events-none" />
 
         <div className="relative h-full flex flex-col items-center py-8">
-          {/* Logo */}
-          <motion.div
+          {/* Logo - Clicável para Visão Geral */}
+          <motion.button
+            onClick={() => router.push('/dashboard')}
             whileHover={{ scale: 1.1, rotate: 5 }}
-            className="mb-12"
+            whileTap={{ scale: 0.95 }}
+            className="mb-12 cursor-pointer"
+            title="Visão Geral"
           >
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-lg hover:shadow-brand-500/30 transition-shadow">
               <span className="text-2xl font-bold text-white">G</span>
             </div>
-          </motion.div>
+          </motion.button>
 
           {/* Navigation Items */}
           <nav className="flex-1 flex flex-col items-center gap-6">

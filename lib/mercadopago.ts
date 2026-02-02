@@ -3,6 +3,13 @@
  * Documentação: https://www.mercadopago.com.br/developers/pt/docs/checkout-api/landing
  */
 
+// 🔒 Função helper para obter URL da app sem quebras de linha ou espaços
+function getAppUrl(): string {
+  const url = process.env.NEXT_PUBLIC_APP_URL || 'https://www.gravadormedico.com.br'
+  // Remove quebras de linha, espaços e barra final
+  return url.replace(/[\n\r\s]/g, '').replace(/\/$/, '')
+}
+
 export interface MercadoPagoPaymentData {
   customer: {
     name: string
@@ -106,7 +113,7 @@ async function processPixPayment(
         ],
         ip_address: data.ip_address || '127.0.0.1'
       },
-      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+      notification_url: `${getAppUrl()}/api/webhooks/mercadopago`,
       statement_descriptor: 'GRAVADOR MEDICO',
       external_reference: `MP-${Date.now()}`
     })
@@ -197,7 +204,7 @@ async function processCreditCardPayment(
         ],
         ip_address: data.ip_address || '127.0.0.1'
       },
-      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+      notification_url: `${getAppUrl()}/api/webhooks/mercadopago`,
       statement_descriptor: 'GRAVADOR MEDICO',
       external_reference: `MP-${Date.now()}`
     })

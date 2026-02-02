@@ -38,19 +38,24 @@ interface ProvisioningResult {
 // 🎯 PASSO A: LER ITENS DA FILA
 // =====================================================
 async function fetchQueueItems(limit: number = 10) {
-  // Buscar por stage (novo) ou status (legado)
+  // 🔥 CORREÇÃO: Query simplificada para buscar itens pendentes
+  // Buscar todos os itens que não estão completed
   const { data: items, error } = await supabaseAdmin
     .from('provisioning_queue')
     .select('*')
-    .or('stage.in.(queued,creating_user,sending_credentials,failed_at_user,failed_at_email),status.in.(pending,processing,failed)')
-    .or('next_retry_at.is.null,next_retry_at.lte.now()')
+    .in('status', ['pending', 'processing', 'failed'])
     .order('created_at', { ascending: true })
     .limit(limit)
 
-  if (error) throw error
+  if (error) {
+    console.error('❌ Erro ao buscar fila:', error)
+    throw error
+  }
+  
+  console.log(`📋 fetchQueueItems: encontrados ${items?.length || 0} itens brutos`)
   
   // Filtrar apenas itens que realmente precisam processamento
-  return (items || []).filter(item => {
+  const filtered = (items || []).filter(item => {
     const stage = item.stage || 'queued'
     const status = item.status
     
@@ -60,6 +65,9 @@ async function fetchQueueItems(limit: number = 10) {
     
     return true
   })
+  
+  console.log(`📋 fetchQueueItems: ${filtered.length} itens após filtro`)
+  return filtered
 }
 
 // =====================================================

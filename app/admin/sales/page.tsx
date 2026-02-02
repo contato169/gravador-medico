@@ -24,7 +24,9 @@ import {
   Clock,
   XCircle,
   X,
-  Trash2
+  Trash2,
+  Play,
+  Loader2
 } from 'lucide-react'
 
 interface Sale {
@@ -57,6 +59,8 @@ export default function SalesPage() {
   const [filteredSales, setFilteredSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [processingWorker, setProcessingWorker] = useState(false)
+  const [workerResult, setWorkerResult] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
@@ -336,6 +340,37 @@ export default function SalesPage() {
     }
   }
 
+  // 🔧 PROCESSAMENTO MANUAL: Executa o worker de provisionamento
+  const handleRunWorker = async () => {
+    setProcessingWorker(true)
+    setWorkerResult(null)
+    
+    try {
+      const response = await fetch('/api/system/run-worker')
+      const data = await response.json()
+      
+      setWorkerResult(data)
+      
+      if (data.success) {
+        const { processed, stages } = data.worker_results || {}
+        if (processed > 0) {
+          alert(`✅ Worker executado!\n\n📊 Processados: ${processed}\n👤 Usuários criados: ${stages?.users_created || 0}\n📧 Emails enviados: ${stages?.emails_sent || 0}`)
+        } else {
+          alert('ℹ️ Worker executado, mas nenhum item pendente na fila.')
+        }
+        // Recarregar vendas para atualizar status
+        loadSales()
+      } else {
+        alert(`❌ Erro ao executar worker: ${data.error || 'Erro desconhecido'}`)
+      }
+    } catch (error: any) {
+      console.error('Erro ao executar worker:', error)
+      alert(`❌ Erro: ${error.message}`)
+    } finally {
+      setProcessingWorker(false)
+    }
+  }
+
   const totalPages = Math.ceil(filteredSales.length / pageSize)
   const paginatedSales = filteredSales.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
@@ -377,12 +412,71 @@ export default function SalesPage() {
           <SyncMercadoPagoButton />
           <SyncAppmaxButton />
 
+          {/* 🔧 Botão de Processamento Manual */}
+          <button 
+            onClick={handleRunWorker} 
+            disabled={processingWorker}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+            title="Processar fila de provisionamento (criar usuários + enviar emails)"
+          >
+            {processingWorker ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
+            <span className="hidden lg:inline">Processar Fila</span>
+          </button>
+
           <button onClick={loadSales} disabled={loading} className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 flex items-center gap-2">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
           </button>
         </div>
       </div>
+
+      {/* Indicador de resultado do Worker */}
+      <AnimatePresence>
+        {workerResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`p-4 rounded-xl border ${
+              workerResult.success 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                : 'bg-red-500/10 border-red-500/30 text-red-400'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {workerResult.success ? (
+                  <CheckCircle2 className="w-5 h-5" />
+                ) : (
+                  <XCircle className="w-5 h-5" />
+                )}
+                <div>
+                  <p className="font-medium">
+                    {workerResult.success ? 'Worker executado com sucesso' : 'Erro ao executar worker'}
+                  </p>
+                  {workerResult.worker_results && (
+                    <p className="text-sm opacity-80">
+                      Processados: {workerResult.worker_results.processed} | 
+                      Usuários: {workerResult.worker_results.stages?.users_created || 0} | 
+                      Emails: {workerResult.worker_results.stages?.emails_sent || 0}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button 
+                onClick={() => setWorkerResult(null)}
+                className="p-1 hover:bg-white/10 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[

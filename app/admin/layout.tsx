@@ -198,14 +198,8 @@ const demograficoItems = [
   },
 ]
 
-// Menu de Produção (Vendas, Pagamentos, Relatórios)
+// Menu de Produção (Pagamentos, Relatórios) - Vendas ficou standalone
 const producaoItems = [
-  { 
-    icon: ShoppingCart, 
-    label: 'Vendas', 
-    href: '/admin/sales',
-    badge: null
-  },
   { 
     icon: CreditCard, 
     label: 'Pagamentos', 
@@ -220,7 +214,7 @@ const producaoItems = [
   },
 ]
 
-// Menu de Gestão (CRM, Clientes, E-mails)
+// Menu de Gestão (CRM, Clientes) - E-mails ficou standalone
 const gestaoItems = [
   { 
     icon: Users, 
@@ -232,12 +226,6 @@ const gestaoItems = [
     icon: Users, 
     label: 'Clientes', 
     href: '/admin/customers',
-    badge: null
-  },
-  { 
-    icon: Mail, 
-    label: 'Gestão de E-mails', 
-    href: '/admin/emails',
     badge: null
   },
 ]
@@ -291,7 +279,16 @@ const menuItems = [
     badge: null
   },
   
-  // 👥 GESTÃO (CRM, Clientes)
+  // � E-MAILS (Standalone - destaque)
+  { 
+    icon: Mail, 
+    label: 'E-mails', 
+    href: '/admin/emails',
+    badge: null,
+    highlight: true
+  },
+  
+  // �👥 GESTÃO (CRM, Clientes)
   { 
     label: 'Gestão', 
     icon: Users,
@@ -315,7 +312,7 @@ const menuItems = [
     subItems: demograficoItems  // Sub-submenu demográfico
   },
   
-  // 💰 PRODUÇÃO (Vendas, Pagamentos, Relatórios)
+  // 💰 PRODUÇÃO (Pagamentos, Relatórios)
   { 
     label: 'Produção', 
     icon: ShoppingBag,
@@ -327,6 +324,15 @@ const menuItems = [
     label: 'Tracking', 
     icon: MousePointerClick,
     items: trackingItems
+  },
+  
+  // 🛒 VENDAS (Standalone - destaque)
+  { 
+    icon: ShoppingCart, 
+    label: 'Vendas', 
+    href: '/admin/sales',
+    badge: null,
+    highlight: true
   },
   
   // � VISÃO GERAL
@@ -558,8 +564,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar Desktop */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-40">
         <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-gray-800 overflow-y-auto shadow-2xl">
-          {/* Logo */}
-          <div className="flex items-center flex-shrink-0 px-6 py-6 border-b border-gray-700">
+          {/* Logo - Clicável para ir para Visão Geral */}
+          <button 
+            onClick={() => router.push('/admin/dashboard')}
+            className="flex items-center flex-shrink-0 px-6 py-6 border-b border-gray-700 hover:bg-gray-800/50 transition-colors cursor-pointer w-full text-left"
+          >
             <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
               <img 
                 src="/images/novo-icon-gravadormedico.png" 
@@ -571,7 +580,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <h1 className="text-xl font-black text-white">Admin Panel</h1>
               <p className="text-xs text-gray-400">Gravador Médico</p>
             </div>
-          </div>
+          </button>
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-1">
@@ -756,7 +765,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-6 border-b border-gray-700">
-                <div className="flex items-center">
+                <button 
+                  onClick={() => {
+                    router.push('/admin/dashboard')
+                    setSidebarOpen(false)
+                  }}
+                  className="flex items-center hover:opacity-80 transition-opacity"
+                >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
                     <img 
                       src="/images/novo-icon-gravadormedico.png" 
@@ -768,7 +783,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <h1 className="text-xl font-black text-white">Admin Panel</h1>
                     <p className="text-xs text-gray-400">Gravador Médico</p>
                   </div>
-                </div>
+                </button>
                 <button
                   onClick={() => setSidebarOpen(false)}
                   className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg"

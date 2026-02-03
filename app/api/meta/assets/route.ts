@@ -220,28 +220,28 @@ export async function GET(request: NextRequest) {
     // Buscar pixels (depende de adAccountId se fornecido)
     const pixels = await getPixels(adAccountId || adAccounts[0]?.id);
 
-    // Buscar configuração salva do usuário (se logado)
+    // Buscar configuração salva (global - sistema single-tenant)
     let savedSettings = null;
-    const authHeader = request.headers.get('authorization');
     
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-        
-        if (user) {
-          const { data } = await supabaseAdmin
-            .from('integration_settings')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('is_default', true)
-            .single();
-          
-          savedSettings = data;
-        }
-      } catch (e) {
-        // Usuário não autenticado, continuar sem settings
+    try {
+      // Buscar qualquer configuração default (não depende de user_id para single-tenant)
+      const { data } = await supabaseAdmin
+        .from('integration_settings')
+        .select('*')
+        .eq('is_default', true)
+        .limit(1)
+        .single();
+      
+      if (data) {
+        savedSettings = data;
+        console.log('✅ Configuração Meta carregada:', {
+          adAccountId: data.meta_ad_account_id,
+          pageId: data.meta_page_id,
+          pixelId: data.meta_pixel_id
+        });
       }
+    } catch (e) {
+      console.log('ℹ️ Nenhuma configuração Meta salva ainda');
     }
 
     const response: MetaAssetsResponse & { savedSettings?: unknown } = {
@@ -302,23 +302,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Buscar usuário do token
-    const authHeader = request.headers.get('authorization');
-    let userId: string | null = null;
+    console.log('📝 Salvando configuração Meta:', {
+      adAccountId,
+      adAccountName,
+      pageId,
+      pageName,
+      pixelId,
+      instagramActorId
+    });
 
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-        userId = user?.id || null;
-      } catch (e) {
-        // Continuar sem user_id (configuração global)
-      }
-    }
-
-    // Preparar dados para salvar
+    // Preparar dados para salvar (sistema single-tenant - não usa user_id)
     const settingsData = {
-      user_id: userId,
       setting_key: 'meta_default',
       meta_ad_account_id: adAccountId,
       meta_ad_account_name: adAccountName,
@@ -328,19 +322,24 @@ export async function POST(request: NextRequest) {
       meta_pixel_name: pixelName,
       meta_instagram_id: instagramId,
       meta_instagram_name: instagramName,
-      instagram_actor_id: instagramActorId || null,  // Novo campo
+      instagram_actor_id: instagramActorId || null,
       instagram_actor_name: instagramActorName || null,
       meta_business_id: businessId,
       is_default: true,
       updated_at: new Date().toISOString()
     };
 
-    // Upsert (atualiza se existir, insere se não)
+    // Primeiro, deletar configurações antigas para evitar conflitos
+    await supabaseAdmin
+      .from('integration_settings')
+      .delete()
+      .eq('setting_key', 'meta_default')
+      .eq('is_default', true);
+
+    // Inserir nova configuração
     const { data, error } = await supabaseAdmin
       .from('integration_settings')
-      .upsert(settingsData, {
-        onConflict: 'user_id,setting_key'
-      })
+      .insert(settingsData)
       .select()
       .single();
 

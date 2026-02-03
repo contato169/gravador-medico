@@ -74,19 +74,16 @@ interface MetaSettings {
 // HELPER: Buscar configurações do banco
 // =====================================================
 
-async function getMetaSettingsFromDB(userId?: string): Promise<MetaSettings | null> {
+async function getMetaSettingsFromDB(): Promise<MetaSettings | null> {
   try {
-    // Buscar configuração do usuário ou global
-    let query = supabaseAdmin
+    // Buscar configuração global (sistema single-tenant)
+    const { data, error } = await supabaseAdmin
       .from('integration_settings')
       .select('*')
-      .eq('is_default', true);
-    
-    if (userId) {
-      query = query.eq('user_id', userId);
-    }
-    
-    const { data, error } = await query.limit(1).single();
+      .eq('is_default', true)
+      .eq('setting_key', 'meta_default')
+      .limit(1)
+      .single();
 
     if (error || !data) {
       console.log('⚠️ Nenhuma configuração encontrada no banco, usando env...');
@@ -99,11 +96,17 @@ async function getMetaSettingsFromDB(userId?: string): Promise<MetaSettings | nu
       return null;
     }
 
+    console.log('✅ Configuração Meta carregada do banco:', {
+      adAccountId: data.meta_ad_account_id,
+      pageId: data.meta_page_id,
+      pixelId: data.meta_pixel_id
+    });
+
     return {
       adAccountId: data.meta_ad_account_id,
       pageId: data.meta_page_id || process.env.META_PAGE_ID || '',
       pixelId: data.meta_pixel_id || process.env.META_PIXEL_ID,
-      instagramId: data.meta_instagram_id || process.env.META_INSTAGRAM_ID,
+      instagramId: data.meta_instagram_id || data.instagram_actor_id || process.env.META_INSTAGRAM_ID,
       accessToken: process.env.META_ACCESS_TOKEN || process.env.FACEBOOK_ACCESS_TOKEN || ''
     };
   } catch (err) {

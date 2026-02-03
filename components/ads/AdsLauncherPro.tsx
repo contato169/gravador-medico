@@ -102,6 +102,8 @@ interface CreativeAnalysis {
   };
   warnings: string[];
   optimization_tips: string[];
+  transcription?: string; // ✅ Transcrição do áudio (Whisper)
+  frame_count?: number;   // ✅ Quantidade de frames analisados
 }
 
 interface CopyVariation {
@@ -1193,6 +1195,64 @@ export default function AdsLauncherPro() {
                         <AlertDescription className="text-sm text-yellow-300">{analysis.warnings.join(' • ')}</AlertDescription>
                       </Alert>
                     )}
+
+                    {/* ✅ NOVO: Seção de Transcrição do Áudio */}
+                    {analysis.format === 'VIDEO' && analysis.transcription && (
+                      <div className="mt-4 p-4 bg-gray-800/80 rounded-lg border border-gray-700">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-white flex items-center gap-2">
+                            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                            📝 Transcrição Completa do Áudio
+                          </h4>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(analysis.transcription || '');
+                              // Feedback visual temporário
+                              const btn = document.activeElement as HTMLButtonElement;
+                              if (btn) {
+                                const originalText = btn.innerHTML;
+                                btn.innerHTML = '✓ Copiado!';
+                                setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+                              }
+                            }}
+                            className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded flex items-center gap-1 transition-colors text-white"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Copiar
+                          </button>
+                        </div>
+                        
+                        <div className="bg-gray-900 p-4 rounded border border-gray-700 max-h-48 overflow-y-auto">
+                          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                            {analysis.transcription}
+                          </p>
+                        </div>
+                        
+                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                          <span className="inline-flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            Transcrito automaticamente via Whisper AI
+                          </span>
+                          <span className="text-gray-400">
+                            {analysis.transcription.split(/\s+/).filter(w => w.length > 0).length} palavras
+                            {analysis.frame_count && ` • ${analysis.frame_count} frames analisados`}
+                          </span>
+                        </div>
+                        
+                        {analysis.transcription.includes('não disponível') && (
+                          <div className="mt-2 text-xs text-yellow-500 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            FFmpeg necessário para transcrição. Instale com: brew install ffmpeg
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -1276,6 +1336,24 @@ export default function AdsLauncherPro() {
                     <AlertCircle className="h-4 w-4 text-yellow-400" />
                     <AlertDescription className="text-sm text-yellow-300">{analysis.warnings.join(' • ')}</AlertDescription>
                   </Alert>
+                )}
+
+                {/* ✅ Transcrição do Áudio na Fase 3 (versão compacta) */}
+                {analysis.format === 'VIDEO' && analysis.transcription && !analysis.transcription.includes('não disponível') && (
+                  <div className="mt-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                    <div className="flex items-center gap-2 text-sm">
+                      <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                      <span className="text-blue-300 font-medium">Áudio transcrito:</span>
+                      <span className="text-gray-400 text-xs ml-auto">
+                        {analysis.transcription.split(/\s+/).filter(w => w.length > 0).length} palavras
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-300 mt-2 line-clamp-2">
+                      "{analysis.transcription.substring(0, 150)}{analysis.transcription.length > 150 ? '...' : ''}"
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

@@ -516,7 +516,8 @@ export async function getFunnelAudience(
           age_min: 25,
           age_max: 65,
           publisher_platforms: ['facebook', 'instagram'],
-          facebook_positions: ['feed', 'story', 'reels'],
+          // ✅ CORRIGIDO: 'reels' só funciona em instagram_positions
+          facebook_positions: ['feed', 'story'],
           instagram_positions: ['stream', 'story', 'reels']
         }
       };

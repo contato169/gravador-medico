@@ -28,6 +28,7 @@ const openai = new OpenAI({
 // Cache do status do FFmpeg
 let ffmpegChecked = false;
 let ffmpegAvailable = false;
+let ffmpegPath = 'ffmpeg'; // Caminho do FFmpeg encontrado
 
 // ==========================================
 // VERIFICAR FFMPEG
@@ -36,13 +37,29 @@ let ffmpegAvailable = false;
 async function checkFFmpeg(): Promise<boolean> {
   if (ffmpegChecked) return ffmpegAvailable;
   
-  try {
-    await execAsync('ffmpeg -version');
-    ffmpegAvailable = true;
-    console.log('✅ [VideoAnalyzer] FFmpeg disponível no sistema');
-  } catch {
-    ffmpegAvailable = false;
-    console.log('⚠️ [VideoAnalyzer] FFmpeg não disponível - usando análise simplificada');
+  // ✅ Tentar com PATH completo do Homebrew (Mac)
+  const possiblePaths = [
+    '/opt/homebrew/bin/ffmpeg', // Mac M1/M2
+    '/usr/local/bin/ffmpeg',    // Mac Intel / Linux
+    '/usr/bin/ffmpeg',          // Linux padrão
+    'ffmpeg'                    // PATH do sistema
+  ];
+  
+  for (const testPath of possiblePaths) {
+    try {
+      await execAsync(`${testPath} -version`);
+      ffmpegAvailable = true;
+      ffmpegPath = testPath;
+      console.log(`✅ [VideoAnalyzer] FFmpeg disponível: ${testPath}`);
+      break;
+    } catch {
+      // Tentar próximo caminho
+    }
+  }
+  
+  if (!ffmpegAvailable) {
+    console.log('⚠️ [VideoAnalyzer] FFmpeg não encontrado - usando análise simplificada');
+    console.log('💡 [VideoAnalyzer] Instale com: brew install ffmpeg');
   }
   
   ffmpegChecked = true;
@@ -75,7 +92,8 @@ export async function extractFramesFromVideo(
   
   try {
     const outputPattern = path.join(outputDir, 'frame-%04d.jpg');
-    await execAsync(`ffmpeg -i "${videoPath}" -vf fps=${framesPerSecond} -frames:v ${maxFrames} "${outputPattern}" -y`);
+    // ✅ Usar ffmpegPath descoberto
+    await execAsync(`${ffmpegPath} -i "${videoPath}" -vf fps=${framesPerSecond} -frames:v ${maxFrames} "${outputPattern}" -y`);
     
     console.log('✅ [VideoAnalyzer] Frames extraídos');
     
@@ -117,7 +135,8 @@ export async function extractAudioFromVideo(
   console.log('🎵 [VideoAnalyzer] Extraindo áudio...');
   
   try {
-    await execAsync(`ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ab 128k "${audioPath}" -y`);
+    // ✅ Usar ffmpegPath descoberto
+    await execAsync(`${ffmpegPath} -i "${videoPath}" -vn -acodec libmp3lame -ab 128k "${audioPath}" -y`);
     console.log('✅ [VideoAnalyzer] Áudio extraído:', audioPath);
     return audioPath;
   } catch (error: any) {

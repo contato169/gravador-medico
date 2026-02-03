@@ -860,7 +860,8 @@ export async function POST(request: NextRequest) {
       finalTargeting = {
         geo_locations: { countries: [location === 'BR' ? 'BR' : location] },
         publisher_platforms: ['facebook', 'instagram'],
-        facebook_positions: ['feed', 'story', 'reels'],
+        // ✅ CORRIGIDO: 'reels' só funciona em instagram_positions, não em facebook_positions
+        facebook_positions: ['feed', 'story'],
         instagram_positions: ['stream', 'story', 'reels'],
         // Advantage+ usa targeting_optimization automaticamente
       };
@@ -963,7 +964,8 @@ export async function POST(request: NextRequest) {
     if (usePlacementAdvantage) {
       // Advantage+ Placements - deixa a Meta otimizar
       finalTargeting.publisher_platforms = ['facebook', 'instagram', 'audience_network'];
-      finalTargeting.facebook_positions = ['feed', 'story', 'reels', 'marketplace', 'video_feeds', 'right_hand_column'];
+      // ✅ CORRIGIDO: 'reels' só funciona em instagram_positions, NÃO em facebook_positions
+      finalTargeting.facebook_positions = ['feed', 'story', 'marketplace', 'video_feeds', 'right_hand_column'];
       finalTargeting.instagram_positions = ['stream', 'story', 'reels', 'explore', 'explore_home'];
       console.log('   🔧 Smart Default: Advantage+ Placements ativado');
     }

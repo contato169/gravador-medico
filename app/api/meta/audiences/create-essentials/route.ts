@@ -36,6 +36,13 @@ interface MetaCredentials {
   igAccountId?: string;
 }
 
+interface MetaAudience {
+  id: string;
+  name: string;
+  approximate_count_lower_bound?: number;
+  delivery_status?: { code: number };
+}
+
 async function getMetaCredentials(): Promise<MetaCredentials> {
   // Buscar configurações do banco
   const { data: settings, error } = await supabaseAdmin
@@ -70,6 +77,76 @@ async function getMetaCredentials(): Promise<MetaCredentials> {
   }
 
   return { adAccountId, accessToken, pixelId, pageId, igAccountId };
+}
+
+// ✨ NOVO: Buscar públicos existentes na Meta API
+async function fetchExistingMetaAudiences(
+  adAccountId: string,
+  accessToken: string
+): Promise<Map<string, MetaAudience>> {
+  console.log('🔍 [fetchExistingMetaAudiences] Buscando públicos existentes na Meta...');
+  
+  try {
+    const response = await fetch(
+      `${BASE_URL}/act_${adAccountId}/customaudiences?fields=id,name,approximate_count_lower_bound,delivery_status&limit=500&access_token=${accessToken}`
+    );
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      console.error('❌ Erro ao buscar públicos da Meta:', data.error);
+      return new Map();
+    }
+    
+    const audiences = data.data || [];
+    const audienceMap = new Map<string, MetaAudience>();
+    
+    audiences.forEach((a: MetaAudience) => {
+      audienceMap.set(a.name, a);
+    });
+    
+    console.log(`📊 ${audienceMap.size} públicos encontrados na Meta`);
+    return audienceMap;
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar públicos:', error);
+    return new Map();
+  }
+}
+
+// ✨ NOVO: Sincronizar público existente com o banco
+async function syncExistingAudienceToDb(
+  metaAudience: MetaAudience,
+  template: AudienceTemplate
+): Promise<boolean> {
+  try {
+    const { error } = await supabaseAdmin.from('ads_audiences').upsert({
+      meta_audience_id: metaAudience.id,
+      template_id: template.id,
+      name: metaAudience.name,
+      audience_type: 'CUSTOM',
+      source_type: template.type,
+      funnel_stage: template.funnel_stage,
+      retention_days: parseInt(template.retention_days),
+      is_essential: template.is_essential,
+      use_for_exclusion: template.use_for_exclusion || false,
+      recommended_for: template.recommended_for,
+      approximate_size: metaAudience.approximate_count_lower_bound || 0,
+      delivery_status: metaAudience.delivery_status?.code === 200 ? 'READY' : 'POPULATING',
+      is_active: true,
+      last_synced_at: new Date().toISOString()
+    }, { onConflict: 'meta_audience_id' });
+
+    if (error) {
+      console.error('⚠️ Erro ao sincronizar:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Erro ao sincronizar público:', error);
+    return false;
+  }
 }
 
 async function createCustomAudience(
@@ -232,7 +309,13 @@ export async function POST(req: NextRequest) {
       hasIG: !!credentials.igAccountId
     });
 
-    // 2. Verificar quais públicos já existem
+    // 2. ✨ NOVO: Buscar públicos existentes na Meta API
+    const existingInMeta = await fetchExistingMetaAudiences(
+      credentials.adAccountId,
+      credentials.accessToken
+    );
+
+    // 3. Verificar quais públicos já existem no banco
     const { data: existingAudiences } = await supabaseAdmin
       .from('ads_audiences')
       .select('template_id, meta_audience_id, name')
@@ -242,12 +325,13 @@ export async function POST(req: NextRequest) {
       existingAudiences?.map(a => a.template_id) || []
     );
 
-    console.log(`📊 ${existingTemplateIds.size} públicos já existem`);
+    console.log(`� ${existingTemplateIds.size} públicos já salvos no banco`);
 
-    // 3. Criar públicos personalizados
+    // 4. Criar públicos personalizados
     const results = {
       created: [] as any[],
       skipped: [] as any[],
+      synced: [] as any[],
       failed: [] as any[],
       lookalikes_created: [] as any[],
       lookalikes_pending: [] as any[]
@@ -299,12 +383,48 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Verificar se já existe
+      // Gerar nome padronizado
+      const expectedName = generateAudienceName(template);
+
+      // ✨ VERIFICAÇÃO 1: Já existe na Meta?
+      if (existingInMeta.has(expectedName)) {
+        const metaAudience = existingInMeta.get(expectedName)!;
+        console.log(`⏭️ ${expectedName} já existe na Meta (ID: ${metaAudience.id})`);
+        
+        // ✨ VERIFICAÇÃO 2: Já está salvo no banco?
+        if (!existingTemplateIds.has(template.id)) {
+          console.log(`💾 Sincronizando ${expectedName} com o banco...`);
+          
+          const synced = await syncExistingAudienceToDb(metaAudience, template);
+          
+          if (synced) {
+            results.synced.push({
+              template_id: template.id,
+              name: metaAudience.name,
+              audience_id: metaAudience.id,
+              size: metaAudience.approximate_count_lower_bound || 0
+            });
+            createdAudienceMap.set(template.id, metaAudience.id);
+          }
+        } else {
+          createdAudienceMap.set(template.id, metaAudience.id);
+        }
+        
+        results.skipped.push({
+          template_id: template.id,
+          name: expectedName,
+          audience_id: metaAudience.id,
+          reason: 'Já existe na Meta'
+        });
+        continue;
+      }
+
+      // Verificar se já existe no banco (mas não na Meta)
       if (existingTemplateIds.has(template.id)) {
         results.skipped.push({
           template_id: template.id,
           name: template.name,
-          reason: 'Já existe'
+          reason: 'Já existe no banco'
         });
         continue;
       }
@@ -319,7 +439,7 @@ export async function POST(req: NextRequest) {
         await supabaseAdmin.from('ads_audiences').upsert({
           meta_audience_id: audience.id,
           template_id: template.id,
-          name: template.name,
+          name: audience.name,
           audience_type: 'CUSTOM',
           source_type: template.type,
           funnel_stage: template.funnel_stage,
@@ -480,6 +600,7 @@ export async function POST(req: NextRequest) {
       success: true,
       summary: {
         audiences_created: results.created.length,
+        audiences_synced: results.synced.length,
         lookalikes_created: results.lookalikes_created.length,
         skipped: results.skipped.length,
         failed: results.failed.length,

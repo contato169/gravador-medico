@@ -38,7 +38,8 @@ interface MetaAsset {
   category?: string;
   username?: string;
   followers_count?: number;
-  instagram_id?: string; // Instagram Business Account vinculado à página
+  instagram_actor_id?: string; // Instagram Business Account vinculado à página
+  instagram_actor_name?: string;
 }
 
 interface MetaAssets {
@@ -48,10 +49,15 @@ interface MetaAssets {
   instagramAccounts: MetaAsset[];
   savedSettings?: {
     meta_ad_account_id?: string;
+    meta_ad_account_name?: string;
     meta_page_id?: string;
+    meta_page_name?: string;
     meta_pixel_id?: string;
+    meta_pixel_name?: string;
     meta_instagram_id?: string;
-    meta_instagram_actor_id?: string; // Instagram vinculado à página
+    meta_instagram_name?: string;
+    instagram_actor_id?: string; // Instagram vinculado à página
+    instagram_actor_name?: string;
   };
 }
 
@@ -108,6 +114,7 @@ export default function MetaAssetSelector() {
       // Pré-selecionar configuração salva (se existir)
       if (data.data.savedSettings) {
         const saved = data.data.savedSettings;
+        console.log('🔄 Carregando configuração salva:', saved);
         setSelected({
           adAccountId: saved.meta_ad_account_id || '',
           adAccountName: saved.meta_ad_account_name || '',
@@ -117,7 +124,7 @@ export default function MetaAssetSelector() {
           pixelName: saved.meta_pixel_name || '',
           instagramId: saved.meta_instagram_id || '',
           instagramName: saved.meta_instagram_name || '',
-          instagramActorId: saved.meta_instagram_actor_id || ''
+          instagramActorId: saved.instagram_actor_id || ''
         });
       }
     } catch (err) {
@@ -312,7 +319,7 @@ export default function MetaAssetSelector() {
                   ...prev,
                   pageId: e.target.value,
                   pageName: asset?.name || '',
-                  instagramActorId: asset?.instagram_id || ''
+                  instagramActorId: asset?.instagram_actor_id || prev.instagramActorId || ''
                 }));
               }}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
@@ -320,22 +327,23 @@ export default function MetaAssetSelector() {
               <option value="">Selecione uma página...</option>
               {assets?.pages.map(page => (
                 <option key={page.id} value={page.id}>
-                  {page.name} {page.category && `(${page.category})`} {page.instagram_id ? '✅ Insta' : '⚠️ Sem Insta'}
+                  {page.name} {page.category && `(${page.category})`} {page.instagram_actor_id ? '✅ Insta' : '⚠️ Sem Insta'}
                 </option>
               ))}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           </div>
-          {selected.pageId && !selected.instagramActorId && (
+          {/* Mostrar status do Instagram vinculado */}
+          {selected.pageId && !selected.instagramActorId && !selected.instagramId && (
             <p className="mt-2 text-sm text-yellow-400 flex items-center gap-1">
               <AlertCircle className="w-4 h-4" />
-              Esta página não tem Instagram vinculado. Anúncios em Stories/Reels podem falhar.
+              Esta página não tem Instagram vinculado. Selecione manualmente abaixo.
             </p>
           )}
-          {selected.instagramActorId && (
+          {selected.pageId && (selected.instagramActorId || selected.instagramId) && (
             <p className="mt-2 text-sm text-green-400 flex items-center gap-1">
               <Check className="w-4 h-4" />
-              Instagram Business Account vinculado automaticamente
+              {selected.instagramId ? '✅ Vínculo Manual definido' : '✅ Instagram Business Account vinculado'}
             </p>
           )}
         </div>
@@ -375,14 +383,21 @@ export default function MetaAssetSelector() {
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
             <Instagram className="w-4 h-4 text-pink-400" />
-            Conta do Instagram (opcional)
+            Conta do Instagram (Manual)
           </label>
           <div className="relative">
             <select
               value={selected.instagramId}
               onChange={(e) => {
                 const asset = assets?.instagramAccounts.find(ig => ig.id === e.target.value);
-                handleSelect('instagramId', e.target.value, asset?.name || asset?.username || '');
+                // Se selecionar manualmente, usa esse ID como instagramActorId também!
+                setSelected(prev => ({
+                  ...prev,
+                  instagramId: e.target.value,
+                  instagramName: asset?.username || asset?.name || '',
+                  // IMPORTANTE: O vínculo manual prevalece sobre o automático da página
+                  instagramActorId: e.target.value || prev.instagramActorId
+                }));
               }}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500"
             >
@@ -395,6 +410,12 @@ export default function MetaAssetSelector() {
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           </div>
+          {selected.instagramId && (
+            <p className="mt-2 text-sm text-green-400 flex items-center gap-1">
+              <Check className="w-4 h-4" />
+              Vínculo Manual: Este Instagram será usado para Feed/Stories/Reels
+            </p>
+          )}
         </div>
       </div>
 

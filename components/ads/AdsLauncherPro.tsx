@@ -4,12 +4,12 @@
 // ADS LAUNCHER PRO - COCKPIT COM FASES BLOQUEADAS
 // =====================================================
 // Sistema de criação de campanhas com fases sequenciais:
-// FASE 1: Formato → FASE 2: Upload + Análise → FASE 3: Objetivo → FASE 4: Copies
+// FASE 1: Formato → FASE 2: Upload + Análise → FASE 3: Objetivo → FASE 4: Copys
 // Cada fase só desbloqueia após completar a anterior.
 // Modelo de IA: GPT-5.2 Vision
 // =====================================================
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -40,6 +40,15 @@ import {
   Lightbulb,
   Lock,
   Layers,
+  Edit3,
+  Save,
+  X,
+  Smartphone,
+  Monitor,
+  Grid3X3,
+  MapPin,
+  Users,
+  Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -214,22 +223,54 @@ const AUDIENCE_STRATEGIES = [
   },
 ];
 
+// Split Testing Options
+const SPLIT_LOCATIONS = [
+  { value: 'BR', label: '🇧🇷 Brasil', code: 'BR' },
+  { value: 'PT', label: '🇵🇹 Portugal', code: 'PT' },
+  { value: 'US', label: '🇺🇸 EUA', code: 'US' },
+  { value: 'MX', label: '🇲🇽 México', code: 'MX' },
+  { value: 'AR', label: '🇦🇷 Argentina', code: 'AR' },
+];
+
+const SPLIT_GENDERS = [
+  { value: 'ALL', label: '👥 Todos', code: null },
+  { value: 'MALE', label: '👨 Masculino', code: 1 },
+  { value: 'FEMALE', label: '👩 Feminino', code: 2 },
+];
+
+const SPLIT_AGE_RANGES = [
+  { value: '18-24', label: '18-24', min: 18, max: 24 },
+  { value: '25-34', label: '25-34', min: 25, max: 34 },
+  { value: '35-44', label: '35-44', min: 35, max: 44 },
+  { value: '45-54', label: '45-54', min: 45, max: 54 },
+  { value: '55-65', label: '55-65', min: 55, max: 65 },
+  { value: '25-54', label: '25-54 (amplo)', min: 25, max: 54 },
+];
+
+const SPLIT_INTERESTS = [
+  { value: 'SAUDE', label: '🏥 Saúde', interest_id: '6003012756699' },
+  { value: 'MEDICINA', label: '⚕️ Medicina', interest_id: '6003107028665' },
+  { value: 'TECNOLOGIA', label: '💻 Tecnologia', interest_id: '6003171943882' },
+  { value: 'EMPREENDEDORISMO', label: '📈 Empreendedorismo', interest_id: '6003384117778' },
+  { value: 'PRODUTIVIDADE', label: '⚡ Produtividade', interest_id: '6003139268610' },
+  { value: 'NEGOCIOS', label: '💼 Negócios', interest_id: '6003273511882' },
+];
+
 // =====================================================
-// HELPER: Obter Token
+// HELPER: Obter Token do Cookie
 // =====================================================
 
-const getAuthToken = async (): Promise<string> => {
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token || '';
-  } catch {
-    return '';
+const getAuthToken = (): string => {
+  if (typeof document === 'undefined') return '';
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'auth_token') {
+      return decodeURIComponent(value);
+    }
   }
+  return '';
 };
 
 // =====================================================
@@ -242,7 +283,7 @@ export default function AdsLauncherPro() {
     { id: 1, name: 'Formato', description: 'Tipo de anúncio', isCompleted: false, isActive: true, isLocked: false },
     { id: 2, name: 'Criativo', description: 'Upload + Análise IA', isCompleted: false, isActive: false, isLocked: true },
     { id: 3, name: 'Objetivo', description: 'Estratégia', isCompleted: false, isActive: false, isLocked: true },
-    { id: 4, name: 'Copies', description: 'Escolher variação', isCompleted: false, isActive: false, isLocked: true }
+    { id: 4, name: 'Copys', description: 'Escolher variação', isCompleted: false, isActive: false, isLocked: true }
   ]);
   const [currentPhase, setCurrentPhase] = useState(1);
 
@@ -266,6 +307,16 @@ export default function AdsLauncherPro() {
   const [copies, setCopies] = useState<{ variations: CopyVariation[]; generation_notes: string } | null>(null);
   const [selectedVariation, setSelectedVariation] = useState<number | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewFormat, setPreviewFormat] = useState<'FEED' | 'STORIES' | 'REELS'>('FEED');
+
+  // Editor de Copy
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingVariationId, setEditingVariationId] = useState<number | null>(null);
+  const [editedPrimaryText, setEditedPrimaryText] = useState('');
+  const [editedHeadline, setEditedHeadline] = useState('');
+  const [editedCta, setEditedCta] = useState('');
+  const [refinementInstructions, setRefinementInstructions] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
 
   // Configurações
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -274,6 +325,20 @@ export default function AdsLauncherPro() {
   const [publishStatus, setPublishStatus] = useState<'PAUSED' | 'ACTIVE'>('PAUSED');
   const [useAdvantagePlus, setUseAdvantagePlus] = useState(true);
   const [audienceStrategy, setAudienceStrategy] = useState('COLD_WINNER');
+
+  // Split Testing (Geração Matricial de AdSets)
+  const [enableSplitTesting, setEnableSplitTesting] = useState(false);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>(['BR']);
+  const [selectedGenders, setSelectedGenders] = useState<string[]>(['ALL']);
+  const [selectedAgeRanges, setSelectedAgeRanges] = useState<string[]>(['25-54']);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [generatedAdSets, setGeneratedAdSets] = useState<{
+    location: string;
+    gender: string;
+    ageRange: string;
+    interest?: string;
+    name: string;
+  }[]>([]);
 
   // Publicação
   const [status, setStatus] = useState<LaunchStatus>('idle');
@@ -345,7 +410,7 @@ export default function AdsLauncherPro() {
     setIsAnalyzing(true);
 
     try {
-      const token = await getAuthToken();
+      const token = getAuthToken();
       const formData = new FormData();
       formData.append('format', format);
       formData.append('file', file);
@@ -356,7 +421,10 @@ export default function AdsLauncherPro() {
         body: formData
       });
 
-      if (!response.ok) throw new Error('Erro ao analisar');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro ao analisar criativo');
+      }
 
       const data = await response.json();
       
@@ -368,13 +436,25 @@ export default function AdsLauncherPro() {
         const objConfig = CAMPAIGN_OBJECTIVES.find(o => o.value === data.analysis.recommended_objective);
         if (objConfig) setFunnelStage(objConfig.funnelStage);
         
-        toast.success('Criativo analisado com GPT-5.2!');
-        completePhase(2);
+        toast.success('✅ Criativo analisado com GPT-5.2 Vision!');
+        // NÃO avança automaticamente - usuário precisa clicar em "Continuar"
+      } else {
+        throw new Error(data.error || 'Análise não retornou dados');
       }
     } catch (error: any) {
+      console.error('[AdsLauncherPro] Erro na análise:', error);
       toast.error('Erro: ' + error.message);
+      setAnalysis(null);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  // Avançar da Fase 2 para Fase 3 (manual)
+  const handleAdvanceFromPhase2 = () => {
+    if (analysis) {
+      completePhase(2);
+      toast.success('Avançando para escolher objetivo!');
     }
   };
 
@@ -384,7 +464,7 @@ export default function AdsLauncherPro() {
     setIsGeneratingCopies(true);
 
     try {
-      const token = await getAuthToken();
+      const token = getAuthToken();
       const response = await fetch('/api/ads/generate-copies', {
         method: 'POST',
         headers: { 
@@ -399,13 +479,13 @@ export default function AdsLauncherPro() {
         })
       });
 
-      if (!response.ok) throw new Error('Erro ao gerar copies');
+      if (!response.ok) throw new Error('Erro ao gerar copys');
       const data = await response.json();
       
       if (data.success && data.variations) {
         setCopies({
           variations: data.variations,
-          generation_notes: data.generation_notes || 'Copies otimizadas'
+          generation_notes: data.generation_notes || 'Copys otimizadas'
         });
         toast.success('3 variações geradas!');
         completePhase(3);
@@ -424,6 +504,59 @@ export default function AdsLauncherPro() {
     toast.success('Variação selecionada!');
   };
 
+  // Gerar permutações de AdSets (Split Testing)
+  const generateAdSetPermutations = () => {
+    const permutations: typeof generatedAdSets = [];
+    
+    for (const location of selectedLocations) {
+      for (const gender of selectedGenders) {
+        for (const ageRange of selectedAgeRanges) {
+          const locationLabel = SPLIT_LOCATIONS.find(l => l.value === location)?.label || location;
+          const genderLabel = SPLIT_GENDERS.find(g => g.value === gender)?.label || gender;
+          const ageLabel = ageRange;
+          
+          if (selectedInterests.length > 0) {
+            // Com interesses selecionados
+            for (const interest of selectedInterests) {
+              const interestLabel = SPLIT_INTERESTS.find(i => i.value === interest)?.label || interest;
+              permutations.push({
+                location,
+                gender,
+                ageRange,
+                interest,
+                name: `${locationLabel}_${genderLabel}_${ageLabel}_${interestLabel}`.replace(/[^\w]/g, '_')
+              });
+            }
+          } else {
+            // Sem interesses
+            permutations.push({
+              location,
+              gender,
+              ageRange,
+              name: `${locationLabel}_${genderLabel}_${ageLabel}`.replace(/[^\w]/g, '_')
+            });
+          }
+        }
+      }
+    }
+    
+    setGeneratedAdSets(permutations);
+    return permutations;
+  };
+
+  // Toggle selection helper para multi-select
+  const toggleSelection = (
+    value: string, 
+    currentSelection: string[], 
+    setSelection: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    if (currentSelection.includes(value)) {
+      setSelection(currentSelection.filter(v => v !== value));
+    } else {
+      setSelection([...currentSelection, value]);
+    }
+  };
+
   // Publicar
   const handlePublishCampaign = async () => {
     if (!selectedVariation || !copies || files.length === 0) return;
@@ -435,7 +568,7 @@ export default function AdsLauncherPro() {
       const selectedCopy = copies.variations.find(v => v.id === selectedVariation);
       if (!selectedCopy) return;
 
-      const token = await getAuthToken();
+      const token = getAuthToken();
       const formData = new FormData();
       
       formData.append('objective', 'Campanha ' + objectiveType + ' - Gravador Médico');
@@ -451,6 +584,18 @@ export default function AdsLauncherPro() {
       
       formData.append('use_advantage_plus', String(useAdvantagePlus));
       formData.append('audience_strategy', audienceStrategy);
+      
+      // Split Testing - enviar configurações se ativo
+      if (enableSplitTesting && generatedAdSets.length > 0) {
+        formData.append('enable_split_testing', 'true');
+        formData.append('split_testing_adsets', JSON.stringify(generatedAdSets.map(adset => ({
+          ...adset,
+          location_config: SPLIT_LOCATIONS.find(l => l.value === adset.location),
+          gender_config: SPLIT_GENDERS.find(g => g.value === adset.gender),
+          age_config: SPLIT_AGE_RANGES.find(a => a.value === adset.ageRange),
+          interest_config: adset.interest ? SPLIT_INTERESTS.find(i => i.value === adset.interest) : null
+        }))));
+      }
       
       if (creativeUrl) formData.append('creative_url', creativeUrl);
       files.forEach((f, i) => {
@@ -468,7 +613,7 @@ export default function AdsLauncherPro() {
       if (data.success) {
         setStatus('success');
         setResult(data);
-        toast.success('Campanha publicada!');
+        toast.success(enableSplitTesting ? `${generatedAdSets.length} AdSets criados!` : 'Campanha publicada!');
       } else {
         throw new Error(data.error || 'Erro ao publicar');
       }
@@ -478,13 +623,88 @@ export default function AdsLauncherPro() {
     }
   };
 
+  // Editor: Abrir
+  const handleOpenEditor = (variationId: number) => {
+    if (!copies) return;
+    const variation = copies.variations.find((v) => v.id === variationId);
+    if (!variation) return;
+
+    setEditingVariationId(variationId);
+    setEditedPrimaryText(variation.primary_text);
+    setEditedHeadline(variation.headline);
+    setEditedCta(variation.cta);
+    setIsEditing(true);
+  };
+
+  // Editor: Salvar
+  const handleSaveEdit = () => {
+    if (!editingVariationId || !copies) return;
+
+    const updatedCopies = {
+      ...copies,
+      variations: copies.variations.map((v) => 
+        v.id === editingVariationId
+          ? { ...v, primary_text: editedPrimaryText, headline: editedHeadline, cta: editedCta }
+          : v
+      )
+    };
+
+    setCopies(updatedCopies);
+    setIsEditing(false);
+    toast.success('✅ Copy editada com sucesso!');
+  };
+
+  // Editor: Refinar com IA
+  const handleRefineWithAI = async () => {
+    if (!editingVariationId || !refinementInstructions.trim()) {
+      toast.error('Digite instruções de refinamento');
+      return;
+    }
+
+    setIsRefining(true);
+    const token = getAuthToken();
+
+    try {
+      const response = await fetch('/api/ads/refine-copy', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          primary_text: editedPrimaryText,
+          headline: editedHeadline,
+          cta: editedCta,
+          refinement_instructions: refinementInstructions,
+          objective_type: objectiveType
+        })
+      });
+
+      if (!response.ok) throw new Error('Erro ao refinar');
+
+      const data = await response.json();
+
+      if (data.success && data.refined) {
+        setEditedPrimaryText(data.refined.primary_text);
+        setEditedHeadline(data.refined.headline);
+        setEditedCta(data.refined.cta);
+        toast.success('🎨 Copy refinada pela IA!');
+        setRefinementInstructions('');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao refinar');
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   // Reset
   const resetForm = () => {
     setPhases([
       { id: 1, name: 'Formato', description: 'Tipo de anúncio', isCompleted: false, isActive: true, isLocked: false },
       { id: 2, name: 'Criativo', description: 'Upload + Análise IA', isCompleted: false, isActive: false, isLocked: true },
       { id: 3, name: 'Objetivo', description: 'Estratégia', isCompleted: false, isActive: false, isLocked: true },
-      { id: 4, name: 'Copies', description: 'Escolher variação', isCompleted: false, isActive: false, isLocked: true }
+      { id: 4, name: 'Copys', description: 'Escolher variação', isCompleted: false, isActive: false, isLocked: true }
     ]);
     setCurrentPhase(1);
     setFormat(null);
@@ -568,40 +788,159 @@ export default function AdsLauncherPro() {
       <AnimatePresence>
         {status === 'success' && result?.data && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-green-900/40 rounded-xl p-6 border border-green-700/50">
-            <div className="flex items-start gap-4">
-              <CheckCircle2 className="w-10 h-10 text-green-400" />
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-green-100">🎉 Campanha Criada com Sucesso!</h3>
-                <p className="text-green-300 mt-1">{result.message}</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                  <div className="bg-gray-800/50 rounded-lg p-3">
-                    <p className="text-sm text-gray-400">Campanha</p>
-                    <p className="text-white font-medium truncate">{result.data.campaign.name}</p>
+            className="space-y-6">
+            
+            {/* Header de Sucesso */}
+            <div className="bg-green-900/40 rounded-xl p-6 border border-green-700/50">
+              <div className="flex items-start gap-4">
+                <CheckCircle2 className="w-10 h-10 text-green-400" />
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-green-100">🎉 Campanha Criada com Sucesso!</h3>
+                  <p className="text-green-300 mt-1">{result.message}</p>
+                  <div className="flex gap-3 mt-4">
+                    <Button onClick={resetForm} className="bg-purple-600 hover:bg-purple-700">
+                      <Rocket className="w-4 h-4 mr-2" />Criar Nova Campanha
+                    </Button>
+                    <Button variant="outline" onClick={() => window.open('https://business.facebook.com/adsmanager', '_blank')} className="border-gray-600 text-white hover:text-white hover:bg-gray-700">
+                      <ExternalLink className="w-4 h-4 mr-2" />Ver no Meta Ads
+                    </Button>
                   </div>
-                  <div className="bg-gray-800/50 rounded-lg p-3">
-                    <p className="text-sm text-gray-400">Orçamento</p>
-                    <p className="text-white font-medium">R$ {result.data.adset.dailyBudget}/dia</p>
-                  </div>
-                  <div className="bg-gray-800/50 rounded-lg p-3">
-                    <p className="text-sm text-gray-400">Anúncios</p>
-                    <p className="text-white font-medium">{result.data.ads.count} criados</p>
-                  </div>
-                  <div className="bg-gray-800/50 rounded-lg p-3">
-                    <p className="text-sm text-gray-400">Estágio</p>
-                    <p className="text-white font-medium">{result.data.campaign.funnelStage}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <Button onClick={resetForm} className="bg-purple-600 hover:bg-purple-700">
-                    <Rocket className="w-4 h-4 mr-2" />Criar Nova Campanha
-                  </Button>
-                  <Button variant="outline" onClick={() => window.open('https://business.facebook.com/adsmanager', '_blank')}>
-                    <ExternalLink className="w-4 h-4 mr-2" />Ver no Meta Ads
-                  </Button>
                 </div>
               </div>
             </div>
+
+            {/* Resumo da Campanha */}
+            <Card className="p-6 bg-gray-900/80 border-gray-700">
+              <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Target className="w-5 h-5 text-purple-400" />
+                Resumo da Campanha
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Nome</p>
+                  <p className="text-white font-medium mt-1 truncate">{result.data.campaign.name}</p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Objetivo</p>
+                  <p className="text-white font-medium mt-1">{objectiveType}</p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Estágio do Funil</p>
+                  <p className="text-white font-medium mt-1">{funnelStage}</p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Status</p>
+                  <p className={cn("font-medium mt-1", publishStatus === 'ACTIVE' ? 'text-green-400' : 'text-yellow-400')}>
+                    {publishStatus === 'ACTIVE' ? '▶️ Ativo' : '⏸️ Pausado'}
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Resumo do Conjunto de Anúncios (AdSet) */}
+            <Card className="p-6 bg-gray-900/80 border-gray-700">
+              <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-blue-400" />
+                Conjunto de Anúncios (AdSet)
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Orçamento Diário</p>
+                  <p className="text-white font-medium mt-1 text-lg">R$ {result.data.adset.dailyBudget}/dia</p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Targeting</p>
+                  <p className="text-white font-medium mt-1">
+                    {useAdvantagePlus ? '⚡ Advantage+' : '🎯 Manual'}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Estratégia de Público</p>
+                  <p className="text-white font-medium mt-1 text-sm">
+                    {audienceStrategy === 'COLD_WINNER' && '❄️ Cold Winner'}
+                    {audienceStrategy === 'LOOKALIKE_AUTO' && '👥 Lookalike Auto'}
+                    {audienceStrategy === 'REMARKETING_VIDEO' && '📹 Remarketing Vídeo'}
+                    {audienceStrategy === 'REMARKETING_HOT' && '🔥 Remarketing Hot'}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Link de Destino</p>
+                  <p className="text-white font-medium mt-1 text-sm truncate">
+                    {linkUrl || 'gravadormedico.com.br'}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Formato do Criativo</p>
+                  <p className="text-white font-medium mt-1">
+                    {format === 'IMAGE' && '🖼️ Imagem'}
+                    {format === 'VIDEO' && '🎬 Vídeo'}
+                    {format === 'CAROUSEL' && '📚 Carrossel'}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Anúncios Criados</p>
+                  <p className="text-white font-medium mt-1 text-lg">{result.data.ads.count}</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Copy Utilizada */}
+            {selectedVariation && copies && (
+              <Card className="p-6 bg-gray-900/80 border-gray-700">
+                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-yellow-400" />
+                  Copy Utilizada (Variação {selectedVariation})
+                </h4>
+                <div className="space-y-4">
+                  <div className="bg-gray-800/50 rounded-lg p-4">
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Primary Text</p>
+                    <p className="text-white text-sm whitespace-pre-line">
+                      {copies.variations.find(v => v.id === selectedVariation)?.primary_text}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-800/50 rounded-lg p-4">
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Headline</p>
+                      <p className="text-white font-semibold">
+                        {copies.variations.find(v => v.id === selectedVariation)?.headline}
+                      </p>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-lg p-4">
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">CTA</p>
+                      <Badge className="bg-blue-600 text-white">
+                        {copies.variations.find(v => v.id === selectedVariation)?.cta}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Dicas de Otimização */}
+            <Card className="p-6 bg-amber-900/20 border-amber-700/50">
+              <h4 className="text-lg font-semibold text-amber-100 mb-3 flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-amber-400" />
+                Próximos Passos
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400">1.</span>
+                  <span className="text-amber-200">Aguarde 24-48h para primeiros dados de performance</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400">2.</span>
+                  <span className="text-amber-200">O sistema pausará automaticamente se gastar R$50 sem vendas</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400">3.</span>
+                  <span className="text-amber-200">ROAS {'>'} 3x = budget aumenta 20% automaticamente</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400">4.</span>
+                  <span className="text-amber-200">Use o Auditor para acompanhar otimizações</span>
+                </div>
+              </div>
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>
@@ -643,7 +982,7 @@ export default function AdsLauncherPro() {
         </Card>
       )}
 
-      {/* FASE 2: Upload */}
+      {/* FASE 2: Upload + Análise */}
       {currentPhase === 2 && isPhaseUnlocked(2) && status !== 'success' && (
         <Card className="p-8 bg-gray-900/80 border-gray-700">
           <div className="flex items-center gap-3 mb-6">
@@ -690,11 +1029,93 @@ export default function AdsLauncherPro() {
               )}
             </label>
           </div>
-          <div className="mt-4">
-            <Button variant="ghost" onClick={() => { setFormat(null); setCurrentPhase(1); }} className="text-gray-400">
-              ← Voltar
-            </Button>
-          </div>
+
+          {/* MOSTRAR ANÁLISE SE JÁ FOI FEITA */}
+          {analysis && !isAnalyzing && (
+            <div className="mt-6 space-y-4">
+              <Card className="p-5 bg-gradient-to-br from-purple-900/40 to-blue-900/40 border-purple-500/40">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-purple-500/20 rounded-xl">
+                    <Sparkles className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-white text-lg mb-3">🤖 Análise GPT-5.2 Vision</h3>
+                    
+                    {/* Recomendação */}
+                    <div className="bg-black/40 rounded-lg p-4 mb-4 border border-purple-500/50">
+                      <div className="flex items-center gap-3 mb-2">
+                        <TrendingUp className="w-5 h-5 text-green-400" />
+                        <span className="text-sm text-gray-400">Recomendação da IA:</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 ml-8">
+                        <Badge className="text-base px-3 py-1 bg-purple-500">{analysis.recommended_objective}</Badge>
+                        <span className="text-sm text-gray-300">({analysis.recommendation_confidence}% confiança)</span>
+                      </div>
+                      <p className="text-sm text-gray-300 mt-2 ml-8">💡 {analysis.recommendation_reasoning}</p>
+                    </div>
+
+                    {/* Grid de detalhes */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-black/20 rounded-lg p-3">
+                        <span className="text-gray-400 text-xs">Elementos Visuais:</span>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {analysis.visual_elements.slice(0, 4).map((el, i) => (
+                            <Badge key={i} className="text-xs bg-gray-700">{el}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="bg-black/20 rounded-lg p-3">
+                        <span className="text-gray-400 text-xs">Mood/Atmosfera:</span>
+                        <div className="mt-1 font-medium text-purple-300">{analysis.mood}</div>
+                      </div>
+                    </div>
+
+                    {/* Qualidade Visual */}
+                    <div className="flex items-center gap-2 text-sm mt-3">
+                      <span className="text-gray-400">Qualidade Visual:</span>
+                      <div className="flex gap-0.5">
+                        {[...Array(10)].map((_, i) => (
+                          <div key={i} className={cn("w-4 h-2 rounded-sm",
+                            i < analysis.technical_details.visual_quality_score ? 'bg-green-500' : 'bg-gray-700')} />
+                        ))}
+                      </div>
+                      <span className="font-semibold text-white">{analysis.technical_details.visual_quality_score}/10</span>
+                    </div>
+
+                    {/* Warnings */}
+                    {analysis.warnings && analysis.warnings.length > 0 && (
+                      <Alert className="mt-3 bg-yellow-900/20 border-yellow-500/30">
+                        <AlertCircle className="h-4 w-4 text-yellow-400" />
+                        <AlertDescription className="text-sm text-yellow-300">{analysis.warnings.join(' • ')}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              {/* BOTÃO CONTINUAR */}
+              <div className="flex justify-between items-center pt-2">
+                <Button variant="ghost" onClick={() => { setFormat(null); setFiles([]); setAnalysis(null); setCurrentPhase(1); }} className="text-gray-400">
+                  ← Voltar
+                </Button>
+                <Button 
+                  onClick={handleAdvanceFromPhase2} 
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 text-lg"
+                >
+                  Continuar para Objetivo <ChevronRight className="ml-2 w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Botão Voltar quando não tem análise ainda */}
+          {!analysis && !isAnalyzing && (
+            <div className="mt-4">
+              <Button variant="ghost" onClick={() => { setFormat(null); setCurrentPhase(1); }} className="text-gray-400">
+                ← Voltar
+              </Button>
+            </div>
+          )}
         </Card>
       )}
 
@@ -727,7 +1148,7 @@ export default function AdsLauncherPro() {
                     <span className="text-gray-400">Elementos:</span>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {analysis.visual_elements.slice(0, 4).map((el, i) => (
-                        <Badge key={i} variant="outline" className="text-xs border-gray-600">{el}</Badge>
+                        <Badge key={i} className="text-xs bg-gray-700 border border-gray-600">{el}</Badge>
                       ))}
                     </div>
                   </div>
@@ -795,7 +1216,7 @@ export default function AdsLauncherPro() {
               <label className="block text-sm font-medium text-gray-300 mb-2">Contexto Adicional (opcional)</label>
               <Textarea placeholder="Ex: Destacar facilidade de uso, Mencionar promoção..."
                 value={additionalContext} onChange={(e) => setAdditionalContext(e.target.value)}
-                rows={2} className="bg-gray-800 border-gray-700" />
+                rows={2} className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500" />
             </div>
 
             <Button onClick={handleGenerateCopies} disabled={isGeneratingCopies}
@@ -810,7 +1231,7 @@ export default function AdsLauncherPro() {
         </div>
       )}
 
-      {/* FASE 4: Copies */}
+      {/* FASE 4: Copys */}
       {currentPhase === 4 && isPhaseUnlocked(4) && copies && status !== 'success' && (
         <div className="space-y-6">
           <Card className="p-4 bg-blue-900/20 border-blue-500/30">
@@ -826,24 +1247,24 @@ export default function AdsLauncherPro() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-white text-lg">Escolha a Copy do Anúncio</h3>
-              <Button onClick={handleGenerateCopies} variant="outline" size="sm" disabled={isGeneratingCopies} className="border-gray-600">
+              <Button onClick={handleGenerateCopies} variant="outline" size="sm" disabled={isGeneratingCopies} className="border-gray-600 text-white hover:text-white hover:bg-gray-700">
                 <RefreshCcw className="w-4 h-4 mr-2" />Gerar Novas
               </Button>
             </div>
 
             {copies.variations.map((variation, index) => (
-              <Card key={variation.id} onClick={() => handleSelectVariation(variation.id)}
-                className={cn("p-6 cursor-pointer transition-all bg-gray-900/80",
+              <Card key={variation.id}
+                className={cn("p-6 transition-all bg-gray-900/80",
                   selectedVariation === variation.id ? 'border-2 border-purple-500 shadow-lg shadow-purple-500/20' :
                   'border border-gray-700 hover:border-gray-600')}>
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleSelectVariation(variation.id)}>
                     {index === 0 && <Trophy className="w-7 h-7 text-yellow-400" />}
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-white text-lg">Variação {variation.id}</h4>
                         <Badge className={cn(
-                          variation.performance_label === 'CAMPEÃ' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                          variation.performance_label === 'CAMPEÃ' || variation.performance_label === '🏆 CAMPEÃ' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
                           variation.performance_label === 'Alternativa' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
                           'bg-gray-500/20 text-gray-300 border-gray-500/30'
                         )}>{variation.performance_label}</Badge>
@@ -855,12 +1276,18 @@ export default function AdsLauncherPro() {
                       </div>
                     </div>
                   </div>
-                  {selectedVariation === variation.id && <CheckCircle2 className="w-6 h-6 text-purple-400" />}
+                  <div className="flex items-center gap-2">
+                    {selectedVariation === variation.id && <CheckCircle2 className="w-6 h-6 text-purple-400" />}
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenEditor(variation.id); }}
+                      className="border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700">
+                      <Edit3 className="w-4 h-4 mr-1" />Editar
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-3 mb-4">
+                <div className="space-y-3 mb-4 cursor-pointer" onClick={() => handleSelectVariation(variation.id)}>
                   <div>
                     <span className="text-xs text-gray-400 uppercase">Primary Text:</span>
-                    <p className="text-sm text-gray-200 mt-1">{variation.primary_text}</p>
+                    <p className="text-sm text-gray-200 mt-1 whitespace-pre-line">{variation.primary_text}</p>
                   </div>
                   <div>
                     <span className="text-xs text-gray-400 uppercase">Headline:</span>
@@ -868,7 +1295,7 @@ export default function AdsLauncherPro() {
                   </div>
                   <div>
                     <span className="text-xs text-gray-400 uppercase">CTA:</span>
-                    <Badge variant="outline" className="mt-1 border-gray-600">{variation.cta}</Badge>
+                    <Badge className="mt-1 bg-gray-700 border border-gray-600">{variation.cta}</Badge>
                   </div>
                 </div>
                 <div className="bg-black/30 rounded-lg p-3 text-xs text-gray-300 border border-gray-700/50">
@@ -934,6 +1361,78 @@ export default function AdsLauncherPro() {
                         </button>
                       </div>
                     </div>
+                    
+                    {/* Opções Manuais - Aparecem quando Advantage+ está desativado */}
+                    {!useAdvantagePlus && (
+                      <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700 space-y-4">
+                        <div className="flex items-center gap-2 text-yellow-400 text-sm mb-3">
+                          <Settings2 className="w-4 h-4" />
+                          <span className="font-medium">Configuração Manual de Targeting</span>
+                        </div>
+                        
+                        {/* Estágio do Funil */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Estágio do Funil de Vendas</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {FUNNEL_STAGES.map((stage) => (
+                              <button key={stage.value} onClick={() => setFunnelStage(stage.value)}
+                                className={cn("p-3 rounded-lg text-center transition",
+                                  funnelStage === stage.value 
+                                    ? stage.color === 'blue' ? 'bg-blue-500/20 border border-blue-500 text-blue-300'
+                                    : stage.color === 'yellow' ? 'bg-yellow-500/20 border border-yellow-500 text-yellow-300'
+                                    : 'bg-green-500/20 border border-green-500 text-green-300'
+                                    : 'bg-gray-800 border border-gray-700 text-gray-400 hover:border-gray-600')}>
+                                <span className="text-xl">{stage.emoji}</span>
+                                <div className="text-xs mt-1 font-medium">{stage.value}</div>
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {FUNNEL_STAGES.find(s => s.value === funnelStage)?.fullDescription}
+                          </p>
+                        </div>
+                        
+                        {/* Idade */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Idade Mínima</label>
+                            <select className="w-full py-2 px-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                              <option value="18">18 anos</option>
+                              <option value="25">25 anos</option>
+                              <option value="30">30 anos</option>
+                              <option value="35">35 anos</option>
+                              <option value="40">40 anos</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Idade Máxima</label>
+                            <select className="w-full py-2 px-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                              <option value="65">65 anos</option>
+                              <option value="55">55 anos</option>
+                              <option value="50">50 anos</option>
+                              <option value="45">45 anos</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        {/* Gênero */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Gênero</label>
+                          <div className="flex gap-2">
+                            <button className="flex-1 py-2 px-4 rounded-lg text-sm font-medium bg-purple-500/20 text-purple-300 border border-purple-500">
+                              Todos
+                            </button>
+                            <button className="flex-1 py-2 px-4 rounded-lg text-sm font-medium bg-gray-800 text-gray-400 border border-gray-700">
+                              Masculino
+                            </button>
+                            <button className="flex-1 py-2 px-4 rounded-lg text-sm font-medium bg-gray-800 text-gray-400 border border-gray-700">
+                              Feminino
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Estratégia de Público</label>
                       <div className="grid grid-cols-2 gap-2">
@@ -947,6 +1446,156 @@ export default function AdsLauncherPro() {
                           </button>
                         ))}
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        💡 {audienceStrategy === 'COLD_WINNER' && 'Melhor para TOPO de funil - público aberto com exclusões inteligentes'}
+                        {audienceStrategy === 'LOOKALIKE_AUTO' && 'Melhor para MEIO de funil - encontra pessoas similares aos compradores'}
+                        {audienceStrategy === 'REMARKETING_VIDEO' && 'Melhor para MEIO de funil - engaja quem já assistiu seus vídeos'}
+                        {audienceStrategy === 'REMARKETING_HOT' && 'Melhor para FUNDO de funil - converte visitantes quentes'}
+                      </p>
+                    </div>
+
+                    {/* Split Testing (Geração Matricial de AdSets) */}
+                    <div className="p-4 bg-gradient-to-br from-orange-500/10 to-yellow-500/10 rounded-xl border border-orange-500/30">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Grid3X3 className="w-5 h-5 text-orange-400" />
+                          <span className="font-semibold text-white">🧪 Geração Matricial (Split Testing)</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEnableSplitTesting(!enableSplitTesting);
+                            if (!enableSplitTesting) generateAdSetPermutations();
+                          }}
+                          className={cn("px-4 py-2 rounded-lg text-sm font-medium transition",
+                            enableSplitTesting ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-orange-500'
+                          )}>
+                          {enableSplitTesting ? '✅ Ativado' : 'Ativar'}
+                        </button>
+                      </div>
+                      
+                      <p className="text-sm text-gray-400 mb-4">
+                        Gere múltiplos AdSets automaticamente para testar diferentes combinações de público.
+                      </p>
+
+                      {enableSplitTesting && (
+                        <div className="space-y-4">
+                          {/* Localização (Multi-select) */}
+                          <div>
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                              <MapPin className="w-4 h-4 text-blue-400" />
+                              Localização
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {SPLIT_LOCATIONS.map((loc) => (
+                                <button key={loc.value}
+                                  onClick={() => toggleSelection(loc.value, selectedLocations, setSelectedLocations)}
+                                  className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition",
+                                    selectedLocations.includes(loc.value)
+                                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500'
+                                      : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-blue-500/50'
+                                  )}>
+                                  {loc.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Gênero (Multi-select) */}
+                          <div>
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                              <Users className="w-4 h-4 text-pink-400" />
+                              Gênero
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {SPLIT_GENDERS.map((gender) => (
+                                <button key={gender.value}
+                                  onClick={() => toggleSelection(gender.value, selectedGenders, setSelectedGenders)}
+                                  className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition",
+                                    selectedGenders.includes(gender.value)
+                                      ? 'bg-pink-500/20 text-pink-300 border border-pink-500'
+                                      : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-pink-500/50'
+                                  )}>
+                                  {gender.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Faixa Etária (Multi-select) */}
+                          <div>
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                              <Hash className="w-4 h-4 text-green-400" />
+                              Faixa Etária
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {SPLIT_AGE_RANGES.map((age) => (
+                                <button key={age.value}
+                                  onClick={() => toggleSelection(age.value, selectedAgeRanges, setSelectedAgeRanges)}
+                                  className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition",
+                                    selectedAgeRanges.includes(age.value)
+                                      ? 'bg-green-500/20 text-green-300 border border-green-500'
+                                      : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-green-500/50'
+                                  )}>
+                                  {age.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Interesses (Multi-select) */}
+                          <div>
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                              <Target className="w-4 h-4 text-purple-400" />
+                              Interesses (Opcional)
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {SPLIT_INTERESTS.map((interest) => (
+                                <button key={interest.value}
+                                  onClick={() => toggleSelection(interest.value, selectedInterests, setSelectedInterests)}
+                                  className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition",
+                                    selectedInterests.includes(interest.value)
+                                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500'
+                                      : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-purple-500/50'
+                                  )}>
+                                  {interest.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Gerar Preview */}
+                          <div className="pt-4 border-t border-gray-700">
+                            <Button onClick={generateAdSetPermutations} variant="outline" size="sm"
+                              className="w-full border-orange-500/50 text-orange-300 hover:bg-orange-500/10">
+                              <Grid3X3 className="w-4 h-4 mr-2" />
+                              Gerar {selectedLocations.length * selectedGenders.length * selectedAgeRanges.length * Math.max(1, selectedInterests.length)} AdSets
+                            </Button>
+                          </div>
+
+                          {/* Preview dos AdSets Gerados */}
+                          {generatedAdSets.length > 0 && (
+                            <div className="mt-4 p-3 bg-gray-900/50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-300">
+                                  📋 {generatedAdSets.length} AdSets Serão Criados:
+                                </span>
+                              </div>
+                              <div className="max-h-32 overflow-y-auto space-y-1">
+                                {generatedAdSets.slice(0, 10).map((adset, i) => (
+                                  <div key={i} className="text-xs text-gray-400 flex items-center gap-1">
+                                    <span className="text-green-400">✓</span> {adset.name}
+                                  </div>
+                                ))}
+                                {generatedAdSets.length > 10 && (
+                                  <div className="text-xs text-gray-500 italic">
+                                    ... e mais {generatedAdSets.length - 10} AdSets
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -957,7 +1606,7 @@ export default function AdsLauncherPro() {
           {/* Ações */}
           {selectedVariation && (
             <div className="flex gap-3">
-              <Button onClick={() => setShowPreview(!showPreview)} variant="outline" className="flex-1 border-gray-600">
+              <Button onClick={() => setShowPreview(!showPreview)} variant="outline" className="flex-1 border-gray-600 text-white hover:text-white hover:bg-gray-700">
                 <Eye className="w-4 h-4 mr-2" />{showPreview ? 'Ocultar' : '👁️ Ver'} Preview
               </Button>
               <Button onClick={handlePublishCampaign} disabled={status === 'creating'}
@@ -973,35 +1622,262 @@ export default function AdsLauncherPro() {
             {showPreview && selectedVariation && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                 <Card className="p-6 bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700">
-                  <h3 className="font-semibold text-white mb-4 text-lg">📱 Preview do Anúncio</h3>
-                  <div className="bg-white rounded-xl overflow-hidden max-w-md mx-auto shadow-2xl">
-                    <div className="p-3 flex items-center gap-2 border-b border-gray-200">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500"></div>
-                      <div>
-                        <div className="font-semibold text-sm text-gray-900">Gravador Médico</div>
-                        <div className="text-xs text-gray-500">Patrocinado · 📍</div>
-                      </div>
-                    </div>
-                    <div className="p-3 text-sm text-gray-900 leading-relaxed">
-                      {copies.variations.find(v => v.id === selectedVariation)?.primary_text}
-                    </div>
-                    {files[0] && (
-                      files[0].type === 'video' ? <video src={files[0].preview} className="w-full" controls /> :
-                      <img src={creativeUrl || files[0].preview} alt="Criativo" className="w-full object-cover" />
-                    )}
-                    <div className="p-3 bg-gray-50 border-t border-gray-200">
-                      <div className="text-xs text-gray-500 uppercase">gravadormedico.com.br</div>
-                      <div className="font-semibold text-base text-gray-900 mt-1">
-                        {copies.variations.find(v => v.id === selectedVariation)?.headline}
-                      </div>
-                    </div>
-                    <div className="p-3 border-t border-gray-200">
-                      <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition">
-                        {copies.variations.find(v => v.id === selectedVariation)?.cta}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-white text-lg">📱 Preview do Anúncio</h3>
+                    {/* Format Tabs */}
+                    <div className="flex gap-1 p-1 bg-gray-800 rounded-lg">
+                      <button onClick={() => setPreviewFormat('FEED')}
+                        className={cn("px-3 py-1.5 rounded text-sm font-medium transition flex items-center gap-1",
+                          previewFormat === 'FEED' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white')}>
+                        <Monitor className="w-4 h-4" />Feed
+                      </button>
+                      <button onClick={() => setPreviewFormat('STORIES')}
+                        className={cn("px-3 py-1.5 rounded text-sm font-medium transition flex items-center gap-1",
+                          previewFormat === 'STORIES' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white')}>
+                        <Smartphone className="w-4 h-4" />Stories
+                      </button>
+                      <button onClick={() => setPreviewFormat('REELS')}
+                        className={cn("px-3 py-1.5 rounded text-sm font-medium transition flex items-center gap-1",
+                          previewFormat === 'REELS' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white')}>
+                        <Video className="w-4 h-4" />Reels
                       </button>
                     </div>
                   </div>
+
+                  {/* Format Info */}
+                  <div className="text-xs text-gray-400 mb-4 text-center">
+                    {previewFormat === 'FEED' && '📐 Feed: 1080x1080px (1:1) ou 1080x1350px (4:5)'}
+                    {previewFormat === 'STORIES' && '📐 Stories: 1080x1920px (9:16) - Tela cheia vertical'}
+                    {previewFormat === 'REELS' && '📐 Reels: 1080x1920px (9:16) - Vídeo vertical'}
+                  </div>
+
+                  {/* Preview Container */}
+                  <div className={cn("mx-auto transition-all",
+                    previewFormat === 'FEED' ? 'max-w-md' : 'max-w-[280px]')}>
+                    
+                    {/* FEED Preview */}
+                    {previewFormat === 'FEED' && (
+                      <div className="bg-white rounded-xl overflow-hidden shadow-2xl">
+                        <div className="p-3 flex items-center gap-2 border-b border-gray-200">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500"></div>
+                          <div>
+                            <div className="font-semibold text-sm text-gray-900">Gravador Médico</div>
+                            <div className="text-xs text-gray-500">Patrocinado · 📍</div>
+                          </div>
+                        </div>
+                        <div className="p-3 text-sm text-gray-900 leading-relaxed whitespace-pre-line">
+                          {copies.variations.find(v => v.id === selectedVariation)?.primary_text}
+                        </div>
+                        {files[0] && (
+                          files[0].type === 'video' ? 
+                            <video src={files[0].preview} className="w-full aspect-square object-cover" controls /> :
+                            <img src={creativeUrl || files[0].preview} alt="Criativo" className="w-full aspect-square object-cover" />
+                        )}
+                        <div className="p-3 bg-gray-50 border-t border-gray-200">
+                          <div className="text-xs text-gray-500 uppercase">gravadormedico.com.br</div>
+                          <div className="font-semibold text-base text-gray-900 mt-1">
+                            {copies.variations.find(v => v.id === selectedVariation)?.headline}
+                          </div>
+                        </div>
+                        <div className="p-3 border-t border-gray-200">
+                          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition">
+                            {copies.variations.find(v => v.id === selectedVariation)?.cta}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* STORIES Preview */}
+                    {previewFormat === 'STORIES' && (
+                      <div className="bg-black rounded-3xl overflow-hidden shadow-2xl relative" style={{ aspectRatio: '9/16' }}>
+                        {/* Creative Full Screen */}
+                        {files[0] && (
+                          files[0].type === 'video' ? 
+                            <video src={files[0].preview} className="w-full h-full object-cover" autoPlay muted loop /> :
+                            <img src={creativeUrl || files[0].preview} alt="Criativo" className="w-full h-full object-cover" />
+                        )}
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70"></div>
+                        {/* Top Bar */}
+                        <div className="absolute top-4 left-4 right-4 flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 ring-2 ring-white"></div>
+                          <div className="flex-1">
+                            <div className="text-white text-xs font-semibold">Gravador Médico</div>
+                            <div className="text-white/70 text-[10px]">Patrocinado</div>
+                          </div>
+                          <div className="text-white text-lg">×</div>
+                        </div>
+                        {/* Bottom CTA */}
+                        <div className="absolute bottom-4 left-4 right-4 space-y-2">
+                          <p className="text-white text-xs leading-relaxed line-clamp-3">
+                            {copies.variations.find(v => v.id === selectedVariation)?.primary_text.split('\n')[0]}
+                          </p>
+                          <button className="w-full bg-white text-black font-semibold py-2 rounded-full text-sm">
+                            {copies.variations.find(v => v.id === selectedVariation)?.cta}
+                          </button>
+                          <div className="flex justify-center gap-1 pt-2">
+                            <ChevronUp className="w-5 h-5 text-white/70" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* REELS Preview */}
+                    {previewFormat === 'REELS' && (
+                      <div className="bg-black rounded-3xl overflow-hidden shadow-2xl relative" style={{ aspectRatio: '9/16' }}>
+                        {/* Creative Full Screen */}
+                        {files[0] && (
+                          files[0].type === 'video' ? 
+                            <video src={files[0].preview} className="w-full h-full object-cover" autoPlay muted loop /> :
+                            <img src={creativeUrl || files[0].preview} alt="Criativo" className="w-full h-full object-cover" />
+                        )}
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80"></div>
+                        {/* Right Side Icons */}
+                        <div className="absolute right-3 bottom-24 space-y-4">
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">❤️</div>
+                            <span className="text-white text-xs mt-1">2.4K</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">💬</div>
+                            <span className="text-white text-xs mt-1">128</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">📤</div>
+                          </div>
+                        </div>
+                        {/* Bottom Content */}
+                        <div className="absolute bottom-4 left-4 right-16 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500"></div>
+                            <span className="text-white text-sm font-semibold">Gravador Médico</span>
+                            <span className="text-white/60 text-xs">• Patrocinado</span>
+                          </div>
+                          <p className="text-white text-xs leading-relaxed line-clamp-2">
+                            {copies.variations.find(v => v.id === selectedVariation)?.primary_text.split('\n')[0]}
+                          </p>
+                          <button className="bg-white text-black font-semibold py-1.5 px-4 rounded-lg text-xs mt-2">
+                            {copies.variations.find(v => v.id === selectedVariation)?.cta}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Device Toggle */}
+                  <div className="flex justify-center gap-4 mt-4 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Smartphone className="w-4 h-4" /> Mobile
+                    </span>
+                    <span className="flex items-center gap-1 opacity-50">
+                      <Monitor className="w-4 h-4" /> Desktop
+                    </span>
+                  </div>
                 </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Modal Editor de Copy */}
+          <AnimatePresence>
+            {isEditing && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+                  className="bg-gray-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <Edit3 className="w-6 h-6 text-purple-400" />
+                        <h3 className="text-xl font-bold text-white">Editor de Copy</h3>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                      </Button>
+                    </div>
+
+                    {/* Refinamento com IA */}
+                    <Card className="p-4 bg-purple-900/20 border-purple-500/30 mb-6">
+                      <div className="flex items-start gap-3 mb-3">
+                        <Sparkles className="w-5 h-5 text-purple-400 flex-shrink-0 mt-1" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-white mb-2">🤖 Refinar com IA</h4>
+                          <Textarea
+                            placeholder="Ex: 'Deixar mais direto', 'Adicionar senso de urgência', 'Quebrar em linhas curtas', 'Remover emojis'"
+                            value={refinementInstructions}
+                            onChange={(e) => setRefinementInstructions(e.target.value)}
+                            rows={2}
+                            className="mb-2 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+                          />
+                          <Button onClick={handleRefineWithAI} disabled={isRefining || !refinementInstructions.trim()}
+                            size="sm" className="bg-purple-600 hover:bg-purple-700">
+                            {isRefining ? (
+                              <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Refinando...</>
+                            ) : (
+                              <><Sparkles className="w-4 h-4 mr-1" />Refinar Agora</>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400 ml-8">
+                        💡 <strong>Dicas:</strong> &quot;Mais curto&quot;, &quot;CTA mais direto&quot;, &quot;Adicionar número específico&quot;, &quot;Trocar emoji&quot;
+                      </div>
+                    </Card>
+
+                    {/* Editor Manual */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-300 mb-2 block">
+                          Primary Text
+                          <span className="text-gray-500 text-xs ml-2">(2-4 linhas, máx 15 palavras/linha)</span>
+                        </label>
+                        <Textarea
+                          value={editedPrimaryText}
+                          onChange={(e) => setEditedPrimaryText(e.target.value)}
+                          rows={6}
+                          className="font-mono text-sm bg-gray-800 border-gray-700 text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-300 mb-2 block">
+                          Headline
+                          <span className={cn("text-xs ml-2", editedHeadline.length > 27 ? 'text-red-400' : 'text-gray-500')}>
+                            ({editedHeadline.length}/27 caracteres)
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editedHeadline}
+                          onChange={(e) => setEditedHeadline(e.target.value)}
+                          maxLength={40}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-300 mb-2 block">CTA</label>
+                        <input
+                          type="text"
+                          value={editedCta}
+                          onChange={(e) => setEditedCta(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Botões de Ação */}
+                    <div className="flex gap-3 mt-6">
+                      <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1 border-gray-600 text-white">
+                        <X className="w-4 h-4 mr-2" />Cancelar
+                      </Button>
+                      <Button onClick={handleSaveEdit} className="flex-1 bg-green-600 hover:bg-green-700">
+                        <Save className="w-4 h-4 mr-2" />Salvar Alterações
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>

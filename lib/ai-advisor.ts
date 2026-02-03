@@ -1,7 +1,7 @@
 /**
  * 🤖 AI CAMPAIGN ADVISOR
  * 
- * Usa IA (OpenAI GPT-4) para analisar métricas de campanhas
+ * Usa IA (OpenAI GPT-5.2) para analisar métricas de campanhas
  * e gerar dicas/insights acionáveis para otimização.
  */
 
@@ -161,13 +161,13 @@ export async function analyzeCampaigns(
     const openai = getOpenAIClient();
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1-chat', // Modelo recomendado para produção (mais rápido e barato que gpt-5.2)
+      model: 'gpt-5.2', // Modelo mais avançado para análise de campanhas
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       response_format: { type: 'json_object' }
     });
 
@@ -212,13 +212,13 @@ Seja conciso e direto. Máximo 150 palavras.
     const openai = getOpenAIClient();
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1-chat', // Modelo recomendado para produção
+      model: 'gpt-5.2', // Modelo mais avançado para análise de campanhas
       messages: [
         { role: 'system', content: 'Você é um especialista em Facebook Ads. Responda em português brasileiro de forma concisa.' },
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 300
+      max_completion_tokens: 300
     });
 
     return completion.choices[0]?.message?.content || 'Não foi possível gerar análise.';
@@ -258,10 +258,10 @@ Contexto das campanhas:
 
     const openai = getOpenAIClient();
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.1-chat', // Modelo recomendado para produção
+      model: 'gpt-5.2', // Modelo mais avançado para análise de campanhas
       messages,
       temperature: 0.7,
-      max_tokens: 500
+      max_completion_tokens: 500
     });
 
     return completion.choices[0]?.message?.content || 'Não entendi sua pergunta. Pode reformular?';

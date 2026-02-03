@@ -92,7 +92,7 @@ Responda APENAS com o JSON, sem markdown ou explicações adicionais.`;
           },
         ],
         temperature: 0.8, // GPT-5.2 se beneficia de mais criatividade
-        max_tokens: 500,
+        max_completion_tokens: 500,
       }),
     });
 
@@ -219,7 +219,7 @@ Retorne JSON com:
           },
         ],
         temperature: 0.8, // GPT-5.2 se beneficia de mais criatividade
-        max_tokens: 600,
+        max_completion_tokens: 600,
       }),
     });
 

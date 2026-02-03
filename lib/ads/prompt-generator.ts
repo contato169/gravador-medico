@@ -219,7 +219,7 @@ export async function generateCopywritingPrompt(
           },
         ],
         temperature: 0.8, // GPT-5.2 se beneficia de mais criatividade
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         response_format: { type: 'json_object' },
       }),
     });

@@ -14,7 +14,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
 import { 
   generateCopiesWithWinnerPrediction, 
   regenerateCopies,
@@ -22,6 +21,8 @@ import {
   CopyVariation
 } from '@/lib/meta/creative-analyzer';
 import { ObjectiveType } from '@/lib/gravador-medico-knowledge';
+import { verifyToken } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 interface GenerateCopiesRequest {
   objective_type: ObjectiveType;
@@ -33,18 +34,32 @@ interface GenerateCopiesRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    // Verificar autenticação via header
+    // Verificar autenticação via cookie auth_token ou header Authorization
+    let token: string | undefined;
+    
+    // Tentar do header primeiro
     const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.replace('Bearer ', '');
+    }
+    
+    // Se não tiver no header, tentar do cookie
+    if (!token) {
+      const cookieStore = await cookies();
+      token = cookieStore.get('auth_token')?.value;
+    }
+    
+    if (!token) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
     
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
+    // Verificar JWT próprio
+    const payload = await verifyToken(token);
+    if (!payload) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
+
+    console.log(`📝 [Generate Copies API] Usuário: ${payload.email}`);
 
     // Parse do body
     const body: GenerateCopiesRequest = await req.json();
@@ -95,22 +110,8 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ [Generate Copies API] Copies geradas com sucesso');
 
-    // Salvar no banco para histórico (opcional)
-    try {
-      await supabaseAdmin
-        .from('ad_copies_history')
-        .insert({
-          user_id: user.id,
-          objective_type,
-          creative_analysis: JSON.stringify(creative_analysis),
-          variations: JSON.stringify(result.variations),
-          additional_context,
-          created_at: new Date().toISOString()
-        });
-    } catch (dbError) {
-      // Não bloquear se falhar o log
-      console.warn('[Generate Copies API] Erro ao salvar histórico:', dbError);
-    }
+    // Log simplificado (sem salvar no banco por enquanto)
+    console.log(`📊 [Generate Copies API] ${result.variations?.length || 0} variações geradas para ${objective_type}`);
 
     return NextResponse.json({
       success: true,

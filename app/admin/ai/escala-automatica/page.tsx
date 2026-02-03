@@ -118,27 +118,8 @@ export default function EscalaAutomaticaPage() {
           </button>
         </div>
 
-        {/* Content */}
-        <div className="mt-6 space-y-8">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeTab === 'launcher' ? (
-              <>
-                <AdsLauncherPro />
-                <AdsDashboard />
-              </>
-            ) : (
-              <OptimizationPanel />
-            )}
-          </motion.div>
-        </div>
-
-        {/* Como Funciona */}
-        <div className="mt-12 bg-gray-900/80 rounded-2xl p-8 border border-gray-700">
+        {/* Como Funciona - TOPO */}
+        <div className="bg-gray-900/80 rounded-2xl p-8 border border-gray-700">
           <h2 className="text-2xl font-bold text-white mb-6">
             Como Funciona
           </h2>
@@ -189,6 +170,27 @@ export default function EscalaAutomaticaPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Content */}
+        <div className="mt-6 space-y-8">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'launcher' ? (
+              <div className="space-y-8">
+                <AdsLauncherPro />
+                <div className="pt-4">
+                  <AdsDashboard />
+                </div>
+              </div>
+            ) : (
+              <OptimizationPanel />
+            )}
+          </motion.div>
         </div>
 
         {/* Regras de Otimização */}

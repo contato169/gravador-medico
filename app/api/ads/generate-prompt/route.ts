@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
       // Chamar GPT-5.2 para gerar as variações de copy
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5.2',
         messages: [
           {
             role: 'system',
@@ -89,7 +89,7 @@ Seu objetivo é criar copies que convertem, respeitando o tom e as regras espec�
           }
         ],
         temperature: 0.8,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         response_format: { type: "json_object" }
       });
 
@@ -129,7 +129,7 @@ Seu objetivo é criar copies que convertem, respeitando o tom e as regras espec�
         prompt: metaPrompt, // Compatibilidade com modo legado
         meta: {
           produto: product.nome,
-          model: 'gpt-4o',
+          model: 'gpt-5.2',
           tokens_used: completion.usage?.total_tokens || 0,
           timestamp: new Date().toISOString(),
         },
@@ -192,7 +192,7 @@ Gere um prompt detalhado e profissional que inclua:
 O prompt deve ser completo e pronto para ser usado diretamente.`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-5.2',
       messages: [
         { 
           role: 'system', 
@@ -211,7 +211,7 @@ REGRAS PARA O PROMPT QUE VOCÊ GERAR:
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 1500,
+      max_completion_tokens: 1500,
     });
 
     const generatedPrompt = response.choices[0]?.message?.content;
@@ -230,7 +230,7 @@ REGRAS PARA O PROMPT QUE VOCÊ GERAR:
         objective,
         funnelStage,
         audienceStrategy,
-        model: 'gpt-4o',
+        model: 'gpt-5.2',
         timestamp: new Date().toISOString(),
       },
     });

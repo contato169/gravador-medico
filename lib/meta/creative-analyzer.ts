@@ -219,7 +219,7 @@ Retorne APENAS o JSON válido, sem markdown.`;
       ],
       response_format: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     });
 
     const responseContent = completion.choices[0]?.message?.content || '{}';
@@ -270,121 +270,200 @@ export async function generateCopiesWithWinnerPrediction(
   const objective = CAMPAIGN_OBJECTIVES[objectiveType];
   const product = GRAVADOR_MEDICO_KNOWLEDGE;
 
-  const prompt = `Você é David Ogilvy + Claude Hopkins combinados, criando anúncios de Facebook Ads de ULTRA ALTA conversão.
+  // Framework de Copy Avançado 2026
+  const copyFramework = {
+    TRAFEGO: {
+      estrutura: 'AIDA ou SCQA (Storytelling)',
+      gancho: 'CURIOSIDADE - "Você sabia que..." ou número chocante',
+      tom: 'Consultivo e educativo',
+      foco: 'Problema sem pressão',
+      cta_examples: ['Ver Como Funciona', 'Assistir Demonstração', 'Descobrir Mais']
+    },
+    CONVERSAO: {
+      estrutura: 'PAS (Problem-Agitate-Solution)',
+      gancho: 'DOR ESPECÍFICA - Pergunta direta com dor',
+      tom: 'Direto e urgente (sem ser falso)',
+      foco: 'Oferta + Garantia + Preço',
+      cta_examples: ['Começar Agora por R$ 36', 'Garantir Acesso Vitalício', 'Testar por 7 Dias']
+    },
+    REMARKETING: {
+      estrutura: 'PPPS (Promessa-Problema-Prova-Solução)',
+      gancho: 'RECONHECIMENTO - Reconhecer que já viu/considerou',
+      tom: 'Empático e removedor de objeções',
+      foco: 'Prova social + Garantia',
+      cta_examples: ['Testar Sem Risco', 'Resgatar Oferta', 'Finalizar Compra']
+    }
+  };
 
-## PRODUTO: Gravador Médico
-**Proposta:** ${product.proposta_central}
-**Dor:** ${product.dor.principal}
-**Benefício:** ${product.beneficios.economia_tempo}
-**Prova Social:** ${product.prova_social.usuarios_ativos}
-**Preço:** ${product.preco.metodo} (${product.preco.acesso})
+  const framework = copyFramework[objectiveType];
 
-## OBJETIVO: ${objective.label}
-- Estágio: ${objective.estagio_funil}
-- Tom: ${objective.tom}
-- Foco: ${objective.foco}
-- CTAs ideais: ${objective.cta_ideal.join(', ')}
+  const prompt = `Você é um copywriter de elite combinando David Ogilvy + Claude Hopkins, especializado em Direct Response para Facebook Ads.
 
-## ANÁLISE DO CRIATIVO:
+## 🎯 FRAMEWORK DE COPY 2026 (Nível Sênior)
 
-**Formato:** ${creativeAnalysis.format}
-**Elementos:** ${creativeAnalysis.visual_elements.join(', ')}
-**Mood:** ${creativeAnalysis.mood}
-**Texto na Imagem:** ${creativeAnalysis.text_in_image || 'Nenhum'}
-**Qualidade Visual:** ${creativeAnalysis.technical_details.visual_quality_score}/10
-
-**Ângulos Recomendados:**
-${creativeAnalysis.recommended_angles.map((a, i) => `${i + 1}. ${a}`).join('\n')}
-
-${additionalContext ? `\n**Contexto Adicional do Usuário:**\n${additionalContext}\n` : ''}
+### PRINCÍPIO: COPY = ARQUITETURA, NÃO ARTE
+"Uma copy não é escrita - é MONTADA como um quebra-cabeça"
 
 ---
 
-## SUA TAREFA:
+## 📦 PRODUTO: Gravador Médico
 
-Crie **3 VARIAÇÕES** de copy, cada uma explorando um ângulo DIFERENTE.
+**Proposta Central:** ${product.proposta_central}
+**Dor Principal:** ${product.dor.principal}
+**Manifestações:** ${product.dor.manifestacoes.slice(0, 3).join(', ')}
+**Benefício Core:** ${product.beneficios.economia_tempo}
+**Preço:** R$ 36 pagamento único (${product.preco.acesso})
+**Garantia:** 7 dias sem perguntas
+**Prova Social:** ${product.prova_social.usuarios_ativos}
 
-**VARIAÇÃO 1 (Campeã - Maior Probabilidade):**
-- Use o ângulo MAIS PROVADO de Direct Response
-- ${objectiveType === 'CONVERSAO' ? 'Mencione preço (R$ 36) + garantia (7 dias)' : 'Foque em curiosidade sem pressão'}
-- CTA forte e direto
+---
 
-**VARIAÇÃO 2 (Alternativa - Ângulo Diferente):**
-- Explore um ângulo secundário (ex: prova social, urgência, transformação)
-- Mantenha consistência com objetivo
+## 🎯 OBJETIVO: ${objective.label.toUpperCase()}
 
-**VARIAÇÃO 3 (Teste A/B - Ângulo Criativo):**
+**Estrutura Recomendada:** ${framework.estrutura}
+**Tipo de Gancho:** ${framework.gancho}
+**Tom:** ${framework.tom}
+**Foco:** ${framework.foco}
+**CTAs Ideais:** ${framework.cta_examples.join(', ')}
+
+---
+
+## 🖼️ ANÁLISE DO CRIATIVO
+
+**Formato:** ${creativeAnalysis.format}
+**Elementos Visuais:** ${creativeAnalysis.visual_elements.join(', ')}
+**Mood/Atmosfera:** ${creativeAnalysis.mood}
+**Texto na Imagem:** "${creativeAnalysis.text_in_image || 'Nenhum'}"
+**Qualidade:** ${creativeAnalysis.technical_details.visual_quality_score}/10
+${creativeAnalysis.technical_details.has_product ? '✅ Mostra produto' : '❌ Não mostra produto'}
+${creativeAnalysis.technical_details.has_people ? '✅ Tem pessoas' : '❌ Sem pessoas'}
+
+**Ângulos Recomendados pela Análise Visual:**
+${creativeAnalysis.recommended_angles.map((a, i) => `${i + 1}. ${a}`).join('\n')}
+
+${additionalContext ? `\n**Contexto Adicional:**\n${additionalContext}\n` : ''}
+
+---
+
+## 📝 ESTRUTURA DAS 4 CAMADAS (Obrigatório)
+
+### LAYER 1: GANCHO (Hook) - Primeiras palavras
+Objetivo: Parar o scroll em 0,3 segundos
+${objectiveType === 'TRAFEGO' ? '→ Use CURIOSIDADE: "2.000 médicos descobriram como nunca mais..."' : ''}
+${objectiveType === 'CONVERSAO' ? '→ Use DOR ESPECÍFICA: "Médico, você fica até 2h da manhã digitando?"' : ''}
+${objectiveType === 'REMARKETING' ? '→ Use RECONHECIMENTO: "Você considerou o Gravador Médico..."' : ''}
+
+### LAYER 2: CONEXÃO (Interest) - Linhas 2-3
+Objetivo: Fazer pensar "isso é para mim"
+→ Agitar a dor OU Mostrar antes/depois OU Identificação + Promessa
+
+### LAYER 3: AMPLIFICAÇÃO (Desire) - Linhas 4-5
+Objetivo: Tornar irresistível com gatilhos mentais
+GATILHOS OBRIGATÓRIOS:
+- ✅ Prova Social: "2.000+ médicos ativos"
+- ✅ Especificidade: "15h/semana", "30 segundos"
+- ✅ Contraste: "Antes 3h digitando → Agora 30s"
+${objectiveType === 'CONVERSAO' || objectiveType === 'REMARKETING' ? '- ✅ Preço + Garantia: "R$ 36 único, 7 dias de garantia"' : ''}
+
+### LAYER 4: AÇÃO (CTA) - Call to Action
+Fórmula: [VERBO] + [BENEFÍCIO] + [REMOÇÃO DE RISCO]
+
+---
+
+## ⚠️ REGRAS CRÍTICAS DE FORMATAÇÃO (NUNCA VIOLAR)
+
+### TRAVESSÃO E PONTUAÇÃO:
+❌ NUNCA use travessão (—) → Substituir por vírgulas, pontos ou quebra de linha
+❌ Errado: "Médico, você perde 15h/semana — e isso afasta você da família"
+✅ Correto: "Médico, você perde 15h/semana.\nIsso afasta você da família e compromete sua saúde."
+
+### QUEBRAS DE LINHA:
+✅ Máximo 12-15 palavras por linha
+✅ Usar \\n\\n entre blocos lógicos
+✅ Estrutura: [Gancho 1-2 linhas] \\n\\n [Conexão 1-2 linhas] \\n\\n [Amplificação + CTA]
+
+### EMOJIS:
+✅ Máximo 2 emojis por copy
+✅ APENAS onde reforçam benefício (📱 iPhone, ⏱️ tempo, ✅ garantia, 💰 preço)
+❌ NUNCA em excesso (parece spam)
+
+### HEADLINE (Máx 27 caracteres):
+Fórmula: [BENEFÍCIO DIRETO] + [ESPECIFICIDADE]
+❌ Ruim: "Solução para médicos" / "Economia de tempo"
+✅ BOM: "Prontuário em 30 segundos" / "Economize 15h por semana"
+
+### CTA (Call to Action):
+Fórmula: [VERBO DE AÇÃO] + [BENEFÍCIO IMEDIATO] + [REMOÇÃO DE RISCO]
+❌ Ruim: "Saiba Mais" / "Clique Aqui"
+✅ BOM: "Testar Grátis por 7 Dias" / "Começar Agora por R$ 36"
+
+### OUTRAS PROIBIÇÕES:
+❌ PROIBIDO: Jargão corporativo ("solução inovadora revolucionária")
+❌ PROIBIDO: Generalização ("economize tempo" sem número)
+❌ PROIBIDO: Urgência FALSA ("últimas 3 vagas")
+❌ PROIBIDO: Foco em features ("tem IA" - e daí?)
+❌ PROIBIDO: Repetir texto que já está na imagem ("${creativeAnalysis.text_in_image || 'nenhum'}")
+
+✅ OBRIGATÓRIO: Números específicos (15h/semana, R$ 36, 2.000 médicos)
+✅ OBRIGATÓRIO: Complementar (não repetir) o visual
+✅ OBRIGATÓRIO: Benefício claro em cada linha
+✅ OBRIGATÓRIO: Tom de voz usando "VOCÊ" (não "médicos" na terceira pessoa)
+
+---
+
+## 🎯 GERE 3 VARIAÇÕES:
+
+**VARIAÇÃO 1 - CAMPEÃ (75-85% performance prevista):**
+- Estrutura: ${framework.estrutura}
+- Ângulo mais comprovado para ${objectiveType}
+- Todos os gatilhos mentais aplicados
+
+**VARIAÇÃO 2 - ALTERNATIVA (60-74% performance):**
+- Ângulo diferente (prova social OU transformação OU contraste)
+- Mantém estrutura base
+
+**VARIAÇÃO 3 - TESTE A/B (50-65% performance):**
 - Ângulo mais criativo/arriscado
 - Para testar hipóteses novas
 
 ---
 
-## REGRAS CRÍTICAS:
-
-**Primary Text:**
-- 2-4 linhas (máximo 125 caracteres por linha)
-- ${objectiveType === 'TRAFEGO' ? 'Hook de curiosidade' : objectiveType === 'CONVERSAO' ? 'Hook de dor + solução imediata' : 'Reconhecer objeção + garantia'}
-- NÃO repita o que está na imagem (texto: "${creativeAnalysis.text_in_image || 'nenhum'}")
-- Use números específicos (15h/semana, 2.000 médicos, R$ 36)
-
-**Headline:**
-- Máximo 27 caracteres
-- Benefício claro e específico
-
-**CTA:**
-- Use um dos CTAs ideais: ${objective.cta_ideal.join(', ')}
-
-**Complementar o Visual:**
-${creativeAnalysis.technical_details.has_product 
-  ? '- Imagem já mostra produto, foque na TRANSFORMAÇÃO'
-  : '- Imagem é conceitual, pode mencionar produto'
-}
-
----
-
-## FORMATO JSON:
+## 📋 FORMATO JSON EXATO:
 
 {
   "variations": [
     {
       "id": 1,
-      "primary_text": "Texto de 2-4 linhas com quebras usando \\n",
-      "headline": "Até 27 caracteres",
-      "cta": "Texto do botão",
-      "predicted_performance": 78,
-      "performance_label": "CAMPEÃ",
-      "reasoning": "Esta variação usa [ângulo X] que historicamente converte 40% melhor em campanhas de [objetivo]"
+      "primary_text": "[GANCHO]\\n\\n[CONEXÃO]\\n\\n[AMPLIFICAÇÃO]${objectiveType !== 'TRAFEGO' ? '\\n\\nR$ 36 único. Garantia de 7 dias.' : ''}",
+      "headline": "Até 27 caracteres máximo",
+      "cta": "${framework.cta_examples[0]}",
+      "predicted_performance": 82,
+      "performance_label": "🏆 CAMPEÃ",
+      "reasoning": "Usa estrutura ${framework.estrutura} com gancho de ${framework.gancho.split(' - ')[0].toLowerCase()}, aplicando gatilhos de prova social e especificidade."
     },
     {
       "id": 2,
       "primary_text": "...",
       "headline": "...",
       "cta": "...",
-      "predicted_performance": 65,
+      "predicted_performance": 68,
       "performance_label": "Alternativa",
-      "reasoning": "Explora prova social que funciona bem com públicos frios"
+      "reasoning": "Explora ângulo de [X] que funciona bem com público [Y]"
     },
     {
       "id": 3,
       "primary_text": "...",
       "headline": "...",
       "cta": "...",
-      "predicted_performance": 58,
+      "predicted_performance": 55,
       "performance_label": "Teste A/B",
-      "reasoning": "Ângulo criativo para testar resposta emocional"
+      "reasoning": "Ângulo criativo testando [hipótese]"
     }
   ],
-  "generation_notes": "As 3 variações exploram: 1) Dor + Solução direta, 2) Prova social, 3) Transformação emocional"
+  "generation_notes": "Variações exploram: 1) [X], 2) [Y], 3) [Z]. Todas seguem framework ${framework.estrutura}."
 }
 
-**IMPORTANTE:** A previsão de performance deve ser baseada em:
-- Alinhamento com objetivo (${objectiveType})
-- Uso de gatilhos mentais comprovados
-- Clareza do benefício
-- Força do CTA
-- Complementaridade com o visual
-
-Gere as 3 variações AGORA. Retorne APENAS o JSON válido.`;
+GERE AGORA. Retorne APENAS o JSON válido.`;
 
   try {
     console.log(`✍️ [Copy Generator] Gerando copies para objetivo: ${objectiveType} (usando ${OPENAI_MODEL})`);
@@ -403,7 +482,7 @@ Gere as 3 variações AGORA. Retorne APENAS o JSON válido.`;
       ],
       response_format: { type: 'json_object' },
       temperature: 0.85, // Criatividade controlada
-      max_tokens: 2500,
+      max_completion_tokens: 2500,
     });
 
     const responseContent = completion.choices[0]?.message?.content || '{}';

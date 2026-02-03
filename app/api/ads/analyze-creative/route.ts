@@ -16,21 +16,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { analyzeCreative, CreativeFormat } from '@/lib/meta/creative-analyzer';
+import { verifyToken } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
   try {
-    // Verificar autenticação via header
+    // Verificar autenticação via cookie auth_token ou header Authorization
+    let token: string | undefined;
+    
+    // Tentar do header primeiro
     const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.replace('Bearer ', '');
+    }
+    
+    // Se não tiver no header, tentar do cookie
+    if (!token) {
+      const cookieStore = await cookies();
+      token = cookieStore.get('auth_token')?.value;
+    }
+    
+    if (!token) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
     
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
+    // Verificar JWT próprio
+    const payload = await verifyToken(token);
+    if (!payload) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
+    
+    console.log(`🎨 [Analyze Creative API] Usuário: ${payload.email}`);
 
     // Parse do FormData
     const formData = await req.formData();
@@ -77,7 +93,9 @@ export async function POST(req: NextRequest) {
 
     // Upload para Supabase Storage
     const fileExt = file.name.split('.').pop() || 'jpg';
-    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    // Usar email sanitizado como folder
+    const userFolder = payload.email.replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `${userFolder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
     const fileBuffer = await file.arrayBuffer();
     
@@ -125,9 +143,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Configurar limite de tamanho do body
-export const config = {
-  api: {
-    bodyParser: false, // Desabilitar para usar formData
-  },
-};
+// Route Segment Config para Next.js App Router
+// FormData é processado nativamente, não precisa de configuração especial
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 segundos para análise com GPT Vision

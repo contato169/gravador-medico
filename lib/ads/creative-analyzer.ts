@@ -143,7 +143,7 @@ Responda APENAS com o JSON.`;
         },
       ],
       temperature: 0.8, // GPT-5.2 se beneficia de mais criatividade
-      max_tokens: 800,
+      max_completion_tokens: 800,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -262,7 +262,7 @@ Responda APENAS com o JSON.`;
         },
       ],
       temperature: 0.8, // GPT-5.2 se beneficia de mais criatividade
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -452,7 +452,7 @@ export async function analyzeWithProfessionalPrompt(
         },
       ],
       temperature: 0.7,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
       response_format: { type: 'json_object' },
     });
 

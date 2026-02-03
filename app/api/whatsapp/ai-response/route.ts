@@ -1,9 +1,9 @@
 // ================================================================
-// EXEMPLO: Integração com IA (GPT-4 / Claude)
+// EXEMPLO: Integração com IA (GPT-5.2 / Claude)
 // ================================================================
 // Este arquivo demonstra como criar um endpoint que:
 // 1. Lê o histórico de mensagens de um contato
-// 2. Envia para uma IA (ex: OpenAI GPT-4)
+// 2. Envia para uma IA (ex: OpenAI GPT-5.2)
 // 3. Retorna uma resposta inteligente
 // ================================================================
 
@@ -55,7 +55,7 @@ Seja empático, objetivo e proponha soluções.
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-5.2',
         messages: [
           {
             role: 'system',
@@ -67,7 +67,7 @@ Seja empático, objetivo e proponha soluções.
           }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_completion_tokens: 500
       })
     })
 
@@ -173,7 +173,7 @@ const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
   },
   body: JSON.stringify({
     model: 'claude-3-opus-20240229',
-    max_tokens: 1024,
+    max_completion_tokens: 1024,
     messages: [
       {
         role: 'user',

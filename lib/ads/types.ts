@@ -116,6 +116,9 @@ export interface AdSetParams {
   bid_strategy?: 'LOWEST_COST_WITHOUT_CAP' | 'LOWEST_COST_WITH_BID_CAP' | 'COST_CAP';
   start_time?: string;
   end_time?: string;
+  // ✅ NOVO: Promoted Object (obrigatório para OFFSITE_CONVERSIONS)
+  pixel_id?: string;
+  custom_event_type?: 'PURCHASE' | 'LEAD' | 'COMPLETE_REGISTRATION' | 'ADD_TO_CART' | 'INITIATE_CHECKOUT' | 'PAGE_VIEW' | 'VIEW_CONTENT' | 'SEARCH' | 'ADD_PAYMENT_INFO';
 }
 
 // Parâmetros do Campaign

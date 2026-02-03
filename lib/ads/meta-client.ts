@@ -218,7 +218,7 @@ export async function createAdSet(
   try {
     const account = new AdAccount(normalizeAdAccountId(adAccountId));
 
-    const adSetData = {
+    const adSetData: any = {
       name: params.name,
       campaign_id: params.campaign_id,
       daily_budget: params.daily_budget, // Em centavos
@@ -228,6 +228,15 @@ export async function createAdSet(
       status: params.status,
       bid_strategy: params.bid_strategy || 'LOWEST_COST_WITHOUT_CAP',
     };
+
+    // ✅ ADICIONAR PROMOTED_OBJECT (OBRIGATÓRIO PARA CONVERSÕES)
+    if (params.optimization_goal === 'OFFSITE_CONVERSIONS' && params.pixel_id) {
+      adSetData.promoted_object = {
+        pixel_id: params.pixel_id,
+        custom_event_type: params.custom_event_type || 'PURCHASE'
+      };
+      console.log('🎯 Promoted Object adicionado:', adSetData.promoted_object);
+    }
 
     console.log('📋 Criando AdSet:', adSetData);
 

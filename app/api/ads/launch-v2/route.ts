@@ -49,6 +49,45 @@ interface VideoStatus {
 }
 
 // =====================================================
+// HELPER: Mapear custom_event_type por funil e objetivo
+// =====================================================
+
+type CustomEventType = 'PURCHASE' | 'LEAD' | 'COMPLETE_REGISTRATION' | 'ADD_TO_CART' | 'INITIATE_CHECKOUT' | 'PAGE_VIEW' | 'VIEW_CONTENT' | 'SEARCH' | 'ADD_PAYMENT_INFO';
+
+function getCustomEventType(funnelStage: string, objectiveType: string): CustomEventType {
+  // ✅ Mapeamento Meta API v24.0 por funil
+  
+  if (objectiveType === 'OUTCOME_SALES') {
+    switch (funnelStage) {
+      case 'TOPO':
+        return 'VIEW_CONTENT'; // Visualização de conteúdo
+      case 'MEIO':
+        return 'ADD_TO_CART'; // Adicionar ao carrinho
+      case 'FUNDO':
+        return 'PURCHASE'; // Compra
+      default:
+        return 'PURCHASE';
+    }
+  }
+  
+  if (objectiveType === 'OUTCOME_LEADS') {
+    switch (funnelStage) {
+      case 'TOPO':
+        return 'PAGE_VIEW';
+      case 'MEIO':
+        return 'LEAD'; // Lead gerado
+      case 'FUNDO':
+        return 'COMPLETE_REGISTRATION'; // Registro completo
+      default:
+        return 'LEAD';
+    }
+  }
+  
+  // Default para OUTCOME_TRAFFIC ou outros
+  return 'VIEW_CONTENT';
+}
+
+// =====================================================
 // CONSTANTES
 // =====================================================
 
@@ -1010,6 +1049,10 @@ export async function POST(request: NextRequest) {
     // adSetName já foi gerado na Etapa 3 com a Taxonomia de Nomenclatura
     const dailyBudgetCents = Math.round(dailyBudget * 100);
 
+    // ✅ Determinar custom_event_type baseado no funil
+    const customEventType = getCustomEventType(funnelStage, objective);
+    console.log(`🎯 Custom Event Type: ${customEventType} (funil: ${funnelStage}, objetivo: ${objective})`);
+
     const adSetId = await createAdSet(metaConfig.adAccountId, {
       name: adSetName,
       campaign_id: campaignId,
@@ -1019,6 +1062,9 @@ export async function POST(request: NextRequest) {
       targeting: finalTargeting as unknown as Parameters<typeof createAdSet>[1]['targeting'],
       status: status,
       bid_strategy: bidStrategy,
+      // ✅ ADICIONAR pixelId e customEventType para promoted_object
+      pixel_id: metaConfig.pixelId,
+      custom_event_type: customEventType,
     });
 
     await logCampaignCreation({

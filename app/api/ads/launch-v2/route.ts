@@ -52,7 +52,13 @@ interface VideoStatus {
 // HELPER: Mapear custom_event_type por funil e objetivo
 // =====================================================
 
-type CustomEventType = 'PURCHASE' | 'LEAD' | 'COMPLETE_REGISTRATION' | 'ADD_TO_CART' | 'INITIATE_CHECKOUT' | 'PAGE_VIEW' | 'VIEW_CONTENT' | 'SEARCH' | 'ADD_PAYMENT_INFO';
+// ✅ Tipos válidos de custom_event_type na Meta API v24.0
+// Lista completa: AD_IMPRESSION, RATE, TUTORIAL_COMPLETION, CONTACT, CUSTOMIZE_PRODUCT, DONATE, 
+// FIND_LOCATION, SCHEDULE, START_TRIAL, SUBMIT_APPLICATION, SUBSCRIBE, ADD_TO_CART, ADD_TO_WISHLIST, 
+// INITIATED_CHECKOUT, ADD_PAYMENT_INFO, PURCHASE, LEAD, COMPLETE_REGISTRATION, CONTENT_VIEW, SEARCH, 
+// SERVICE_BOOKING_REQUEST, MESSAGING_CONVERSATION_STARTED_7D, LEVEL_ACHIEVED, ACHIEVEMENT_UNLOCKED, 
+// SPENT_CREDITS, LISTING_INTERACTION, D2_RETENTION, D7_RETENTION, OTHER
+type CustomEventType = 'PURCHASE' | 'LEAD' | 'COMPLETE_REGISTRATION' | 'ADD_TO_CART' | 'INITIATED_CHECKOUT' | 'CONTENT_VIEW' | 'SEARCH' | 'ADD_PAYMENT_INFO' | 'ADD_TO_WISHLIST' | 'CONTACT';
 
 function getCustomEventType(funnelStage: string, objectiveType: string): CustomEventType {
   // ✅ Mapeamento Meta API v24.0 por funil
@@ -60,7 +66,7 @@ function getCustomEventType(funnelStage: string, objectiveType: string): CustomE
   if (objectiveType === 'OUTCOME_SALES') {
     switch (funnelStage) {
       case 'TOPO':
-        return 'VIEW_CONTENT'; // Visualização de conteúdo
+        return 'CONTENT_VIEW'; // ✅ Visualização de conteúdo (CORRETO para Meta API)
       case 'MEIO':
         return 'ADD_TO_CART'; // Adicionar ao carrinho
       case 'FUNDO':
@@ -73,7 +79,7 @@ function getCustomEventType(funnelStage: string, objectiveType: string): CustomE
   if (objectiveType === 'OUTCOME_LEADS') {
     switch (funnelStage) {
       case 'TOPO':
-        return 'PAGE_VIEW';
+        return 'CONTENT_VIEW'; // ✅ CONTENT_VIEW ao invés de PAGE_VIEW
       case 'MEIO':
         return 'LEAD'; // Lead gerado
       case 'FUNDO':
@@ -84,7 +90,7 @@ function getCustomEventType(funnelStage: string, objectiveType: string): CustomE
   }
   
   // Default para OUTCOME_TRAFFIC ou outros
-  return 'VIEW_CONTENT';
+  return 'CONTENT_VIEW'; // ✅ CONTENT_VIEW ao invés de VIEW_CONTENT
 }
 
 // =====================================================

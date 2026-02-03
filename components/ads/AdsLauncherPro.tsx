@@ -1932,9 +1932,16 @@ export default function AdsLauncherPro() {
                         <div className="p-3 text-sm text-gray-900 leading-relaxed whitespace-pre-line">
                           {copies.variations.find(v => v.id === selectedVariation)?.primary_text}
                         </div>
+                        {/* ✅ Creative: Usar creativeUrl (Supabase) para vídeo e imagem */}
                         {files[0] && (
                           files[0].type === 'video' ? 
-                            <video src={files[0].preview} className="w-full aspect-square object-cover" controls /> :
+                            <video 
+                              src={creativeUrl || files[0].preview} 
+                              className="w-full aspect-square object-cover" 
+                              controls 
+                              playsInline
+                              preload="metadata"
+                            /> :
                             <img src={creativeUrl || files[0].preview} alt="Criativo" className="w-full aspect-square object-cover" />
                         )}
                         <div className="p-3 bg-gray-50 border-t border-gray-200">
@@ -1954,10 +1961,17 @@ export default function AdsLauncherPro() {
                     {/* STORIES Preview */}
                     {previewFormat === 'STORIES' && (
                       <div className="bg-black rounded-3xl overflow-hidden shadow-2xl relative" style={{ aspectRatio: '9/16' }}>
-                        {/* Creative Full Screen */}
+                        {/* ✅ Creative Full Screen - Usar creativeUrl (Supabase) */}
                         {files[0] && (
                           files[0].type === 'video' ? 
-                            <video src={files[0].preview} className="w-full h-full object-cover" autoPlay muted loop /> :
+                            <video 
+                              src={creativeUrl || files[0].preview} 
+                              className="w-full h-full object-cover" 
+                              autoPlay 
+                              muted 
+                              loop 
+                              playsInline
+                            /> :
                             <img src={creativeUrl || files[0].preview} alt="Criativo" className="w-full h-full object-cover" />
                         )}
                         {/* Gradient Overlay */}
@@ -1989,10 +2003,17 @@ export default function AdsLauncherPro() {
                     {/* REELS Preview */}
                     {previewFormat === 'REELS' && (
                       <div className="bg-black rounded-3xl overflow-hidden shadow-2xl relative" style={{ aspectRatio: '9/16' }}>
-                        {/* Creative Full Screen */}
+                        {/* ✅ Creative Full Screen - Usar creativeUrl (Supabase) */}
                         {files[0] && (
                           files[0].type === 'video' ? 
-                            <video src={files[0].preview} className="w-full h-full object-cover" autoPlay muted loop /> :
+                            <video 
+                              src={creativeUrl || files[0].preview} 
+                              className="w-full h-full object-cover" 
+                              autoPlay 
+                              muted 
+                              loop 
+                              playsInline
+                            /> :
                             <img src={creativeUrl || files[0].preview} alt="Criativo" className="w-full h-full object-cover" />
                         )}
                         {/* Gradient Overlay */}

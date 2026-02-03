@@ -1,8 +1,8 @@
 // =====================================================
-// API: SINCRONIZAR TAMANHOS DOS PÚBLICOS
+// API: SINCRONIZAR PÚBLICOS DA META
 // =====================================================
-// Atualiza o tamanho e status dos públicos existentes
-// consultando a Meta API
+// 1. Importa públicos que existem na Meta mas não no banco
+// 2. Atualiza tamanhos dos públicos existentes
 // =====================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,116 +14,159 @@ export const maxDuration = 60;
 const API_VERSION = 'v21.0';
 const BASE_URL = `https://graph.facebook.com/${API_VERSION}`;
 
+// Buscar configurações do banco
+async function getMetaConfig() {
+  const { data: settings } = await supabaseAdmin
+    .from('integration_settings')
+    .select('meta_ad_account_id')
+    .eq('is_default', true)
+    .eq('setting_key', 'meta_default')
+    .limit(1)
+    .single();
+
+  const adAccountId = settings?.meta_ad_account_id || process.env.META_AD_ACCOUNT_ID;
+  const accessToken = process.env.META_ACCESS_TOKEN || process.env.FACEBOOK_ACCESS_TOKEN;
+
+  return { adAccountId, accessToken };
+}
+
 export async function POST(req: NextRequest) {
   try {
-    console.log('🔄 [Sync Sizes] Iniciando sincronização...');
+    console.log('🔄 [Sync Audiences] Iniciando sincronização completa...');
 
-    // Buscar access token
-    const accessToken = process.env.META_ACCESS_TOKEN || process.env.FACEBOOK_ACCESS_TOKEN;
+    const { adAccountId, accessToken } = await getMetaConfig();
     
-    if (!accessToken) {
+    if (!accessToken || !adAccountId) {
       return NextResponse.json({
-        error: 'Token de acesso Meta não configurado'
+        error: 'Credenciais Meta não configuradas'
       }, { status: 400 });
     }
 
-    // Buscar públicos salvos no banco
-    const { data: audiences, error } = await supabaseAdmin
-      .from('ads_audiences')
-      .select('meta_audience_id, name, template_id')
-      .not('meta_audience_id', 'is', null);
-
-    if (error) throw error;
-
-    if (!audiences || audiences.length === 0) {
+    // 1. Buscar TODOS os públicos da Meta API
+    console.log('🔍 Buscando públicos da Meta API...');
+    const metaResponse = await fetch(
+      `${BASE_URL}/act_${adAccountId}/customaudiences?fields=id,name,approximate_count_lower_bound,delivery_status,subtype,description&limit=500&access_token=${accessToken}`
+    );
+    
+    const metaData = await metaResponse.json();
+    
+    if (metaData.error) {
+      console.error('❌ Erro ao buscar públicos da Meta:', metaData.error);
       return NextResponse.json({
-        success: true,
-        message: 'Nenhum público para sincronizar'
-      });
+        error: metaData.error.message
+      }, { status: 500 });
     }
 
-    console.log(`📊 Sincronizando ${audiences.length} públicos...`);
+    const metaAudiences = metaData.data || [];
+    console.log(`📊 ${metaAudiences.length} públicos encontrados na Meta`);
 
-    const updates = [];
-    const errors = [];
+    // 2. Buscar públicos já no banco
+    const { data: dbAudiences } = await supabaseAdmin
+      .from('ads_audiences')
+      .select('meta_audience_id, name');
 
-    for (const audience of audiences) {
-      try {
-        const response = await fetch(
-          `${BASE_URL}/${audience.meta_audience_id}?fields=approximate_count_lower_bound,approximate_count_upper_bound,delivery_status,time_updated&access_token=${accessToken}`
-        );
+    const existingIds = new Set(dbAudiences?.map(a => a.meta_audience_id) || []);
+    console.log(`💾 ${existingIds.size} públicos já no banco`);
 
-        const data = await response.json();
+    const results = {
+      imported: [] as any[],
+      updated: [] as any[],
+      errors: [] as any[]
+    };
 
-        if (data.error) {
-          console.error(`⚠️ Erro ao buscar ${audience.name}:`, data.error.message);
-          errors.push({
-            name: audience.name,
-            error: data.error.message
-          });
-          continue;
-        }
+    // 3. Processar cada público da Meta
+    for (const audience of metaAudiences) {
+      const size = audience.approximate_count_lower_bound || 0;
+      const status = audience.delivery_status?.code === 200 ? 'READY' : 'POPULATING';
+      const isLookalike = audience.subtype === 'LOOKALIKE';
 
-        const size = data.approximate_count_lower_bound || 0;
-        const status = data.delivery_status?.code === 200 ? 'READY' : 'POPULATING';
+      // Determinar tipo e funnel_stage
+      let audienceType = 'CUSTOM';
+      let sourceType = 'UNKNOWN';
+      let funnelStage = 'MEDIO';
 
-        // Atualizar no banco
-        const { error: updateError } = await supabaseAdmin
+      if (isLookalike) {
+        audienceType = 'LOOKALIKE';
+        funnelStage = 'TOPO';
+      } else if (audience.name?.includes('ENG') || audience.name?.includes('Engajamento')) {
+        sourceType = 'ENGAGEMENT';
+        funnelStage = 'MEDIO';
+      } else if (audience.name?.includes('WEB') || audience.name?.includes('Visitante')) {
+        sourceType = 'WEBSITE';
+        funnelStage = audience.name?.includes('7d') || audience.name?.includes('30d') ? 'FUNDO' : 'MEDIO';
+      }
+
+      if (existingIds.has(audience.id)) {
+        // Atualizar público existente
+        const { error } = await supabaseAdmin
           .from('ads_audiences')
           .update({
             approximate_size: size,
             delivery_status: status,
             last_synced_at: new Date().toISOString()
           })
-          .eq('meta_audience_id', audience.meta_audience_id);
+          .eq('meta_audience_id', audience.id);
 
-        if (updateError) {
-          console.error(`⚠️ Erro ao atualizar ${audience.name}:`, updateError);
-          errors.push({
+        if (error) {
+          results.errors.push({ name: audience.name, error: error.message });
+        } else {
+          results.updated.push({
             name: audience.name,
-            error: updateError.message
+            size,
+            status
           });
-          continue;
         }
+      } else {
+        // Importar novo público
+        const { error } = await supabaseAdmin
+          .from('ads_audiences')
+          .insert({
+            meta_audience_id: audience.id,
+            name: audience.name,
+            audience_type: audienceType,
+            source_type: sourceType,
+            funnel_stage: funnelStage,
+            approximate_size: size,
+            delivery_status: status,
+            is_active: true,
+            is_essential: audience.name?.includes('[GDM]') || false,
+            last_synced_at: new Date().toISOString()
+          });
 
-        updates.push({
-          name: audience.name,
-          size,
-          status,
-          template_id: audience.template_id
-        });
-
-        console.log(`✅ ${audience.name}: ${size.toLocaleString()} pessoas (${status})`);
-
-        // Rate limit
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-      } catch (err: any) {
-        console.error(`❌ Erro ao sincronizar ${audience.name}:`, err.message);
-        errors.push({
-          name: audience.name,
-          error: err.message
-        });
+        if (error) {
+          results.errors.push({ name: audience.name, error: error.message });
+        } else {
+          results.imported.push({
+            name: audience.name,
+            size,
+            status,
+            type: audienceType
+          });
+          console.log(`✅ Importado: ${audience.name} (${size} pessoas)`);
+        }
       }
     }
 
-    console.log('✅ [Sync Sizes] Concluído!');
+    console.log('✅ [Sync Audiences] Concluído!');
+    console.log(`   - Importados: ${results.imported.length}`);
+    console.log(`   - Atualizados: ${results.updated.length}`);
+    console.log(`   - Erros: ${results.errors.length}`);
 
     return NextResponse.json({
       success: true,
       summary: {
-        synced: updates.length,
-        errors: errors.length,
-        total: audiences.length
+        total_in_meta: metaAudiences.length,
+        imported: results.imported.length,
+        updated: results.updated.length,
+        errors: results.errors.length
       },
-      updates,
-      errors: errors.length > 0 ? errors : undefined
+      details: results
     });
 
   } catch (error: any) {
-    console.error('❌ [Sync Sizes] Erro fatal:', error);
+    console.error('❌ [Sync Audiences] Erro fatal:', error);
     return NextResponse.json({
-      error: 'Erro ao sincronizar tamanhos',
+      error: 'Erro ao sincronizar públicos',
       details: error.message
     }, { status: 500 });
   }
@@ -131,11 +174,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    // Retorna status da última sincronização
     const { data: audiences, error } = await supabaseAdmin
       .from('ads_audiences')
-      .select('name, approximate_size, delivery_status, last_synced_at')
-      .not('meta_audience_id', 'is', null)
+      .select('name, approximate_size, delivery_status, funnel_stage, audience_type, last_synced_at')
       .order('approximate_size', { ascending: false });
 
     if (error) throw error;
@@ -144,6 +185,8 @@ export async function GET(req: NextRequest) {
       total: audiences?.length || 0,
       ready: audiences?.filter(a => a.delivery_status === 'READY').length || 0,
       populating: audiences?.filter(a => a.delivery_status === 'POPULATING').length || 0,
+      custom: audiences?.filter(a => a.audience_type === 'CUSTOM').length || 0,
+      lookalikes: audiences?.filter(a => a.audience_type === 'LOOKALIKE').length || 0,
       total_reach: audiences?.reduce((acc, a) => acc + (a.approximate_size || 0), 0) || 0
     };
 
@@ -154,9 +197,7 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('[Sync Sizes GET] Erro:', error);
-    return NextResponse.json({
-      error: error.message
-    }, { status: 500 });
+    console.error('[Sync GET] Erro:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

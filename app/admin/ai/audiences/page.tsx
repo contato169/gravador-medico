@@ -21,7 +21,8 @@ import {
   Search,
   Filter,
   Info,
-  ChevronDown
+  ChevronDown,
+  CloudDownload
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -312,6 +313,7 @@ export default function AudiencesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -435,6 +437,52 @@ export default function AudiencesPage() {
     }
   };
 
+  // Sincronizar públicos existentes da Meta
+  const handleSyncFromMeta = async () => {
+    setIsSyncing(true);
+
+    try {
+      const response = await fetch('/api/meta/audiences/sync-sizes', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao sincronizar');
+      }
+
+      if (data.imported > 0) {
+        toast.success(
+          `✅ ${data.imported} públicos importados da Meta!`,
+          {
+            description: data.updated > 0 
+              ? `${data.updated} tamanhos atualizados` 
+              : 'Sincronização concluída'
+          }
+        );
+      } else if (data.updated > 0) {
+        toast.success(
+          `✅ ${data.updated} tamanhos atualizados`,
+          { description: 'Todos os públicos já estavam sincronizados' }
+        );
+      } else {
+        toast.info('Nenhuma atualização necessária', {
+          description: `${data.total_meta_audiences} públicos na Meta`
+        });
+      }
+
+      // Recarregar lista para mostrar novos públicos
+      await loadAudiences();
+
+    } catch (error: any) {
+      console.error('Erro ao sincronizar:', error);
+      toast.error(error.message || 'Erro ao sincronizar com Meta');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Copiar ID
   const copyId = (id: string) => {
     navigator.clipboard.writeText(id);
@@ -489,6 +537,20 @@ export default function AudiencesPage() {
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={handleSyncFromMeta}
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all disabled:opacity-50"
+            title="Sincronizar públicos existentes da Meta"
+          >
+            {isSyncing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CloudDownload className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
           </button>
 
           <button

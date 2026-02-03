@@ -342,7 +342,9 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico (favicon)
      * - public folder
+     * - /api/ads/analyze-creative (upload de arquivos grandes)
+     * - /api/ads/launch-v2 (upload de vídeos grandes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/ads/analyze-creative|api/ads/launch-v2|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

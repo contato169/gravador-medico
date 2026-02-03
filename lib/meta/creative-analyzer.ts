@@ -57,6 +57,10 @@ export interface CreativeAnalysis {
   // Avisos e Sugestões
   warnings: string[]; // Ex: "Imagem com pouco contraste"
   optimization_tips: string[]; // Ex: "Adicione um CTA no texto"
+  
+  // === CAMPOS EXTRAS DE VÍDEO (opcionais) ===
+  transcription?: string; // Transcrição do áudio via Whisper
+  frame_count?: number;   // Quantidade de frames analisados
 }
 
 /**
@@ -337,7 +341,17 @@ export async function generateCopiesWithWinnerPrediction(
 **Qualidade:** ${creativeAnalysis.technical_details.visual_quality_score}/10
 ${creativeAnalysis.technical_details.has_product ? '✅ Mostra produto' : '❌ Não mostra produto'}
 ${creativeAnalysis.technical_details.has_people ? '✅ Tem pessoas' : '❌ Sem pessoas'}
+${creativeAnalysis.format === 'VIDEO' && creativeAnalysis.transcription ? `
+---
+## 🎬 ANÁLISE DE VÍDEO (TRANSCRIÇÃO)
 
+**Frames Analisados:** ${creativeAnalysis.frame_count || 'N/A'}
+**Transcrição do Áudio (Whisper):**
+"${creativeAnalysis.transcription.substring(0, 1000)}${creativeAnalysis.transcription.length > 1000 ? '...' : ''}"
+
+⚠️ IMPORTANTE: A copy deve COMPLEMENTAR o vídeo, não repetir o que já é dito no áudio.
+Use os hooks e pontos principais da transcrição como base para criar copies que reforçam a mensagem.
+` : ''}
 **Ângulos Recomendados pela Análise Visual:**
 ${creativeAnalysis.recommended_angles.map((a, i) => `${i + 1}. ${a}`).join('\n')}
 

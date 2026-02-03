@@ -129,9 +129,22 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function isVideoFile(file: File): boolean {
+function isVideoFile(file: File | undefined | null): boolean {
+  // ✅ Validar se file existe e tem propriedades necessárias
+  if (!file) {
+    console.warn('⚠️ isVideoFile: file é undefined/null');
+    return false;
+  }
+  
+  if (!file.name) {
+    console.warn('⚠️ isVideoFile: file.name é undefined');
+    return false;
+  }
+  
   const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-  return VIDEO_EXTENSIONS.includes(extension) || file.type.startsWith('video/');
+  const isVideo = VIDEO_EXTENSIONS.includes(extension) || (file.type?.startsWith('video/') ?? false);
+  
+  return isVideo;
 }
 
 // =====================================================
@@ -530,10 +543,23 @@ export async function POST(request: NextRequest) {
 
     console.log('🎯 Targeting:', { useAdvantagePlus, audienceStrategy, ageMin, ageMax, gender, location });
 
+    // ✅ Verificar se já tem creative_url (já foi feito upload antes)
+    const creativeUrl = formData.get('creative_url') as string | null;
+    console.log('🎨 Creative URL recebida:', creativeUrl ? creativeUrl.substring(0, 80) + '...' : 'Nenhuma');
+
     // Obter arquivos (imagens e vídeos)
     const mediaFiles: File[] = [];
+    
+    // ✅ LOGS DE DEBUG DETALHADOS
+    console.log('📦 [Launch V2] FormData keys:', Array.from(formData.keys()));
+    
     formData.forEach((value, key) => {
       if ((key.startsWith('image') || key.startsWith('file') || key.startsWith('video')) && value instanceof File) {
+        console.log(`📁 [Launch V2] ${key}:`, {
+          name: value.name,
+          size: `${(value.size / 1024 / 1024).toFixed(2)} MB`,
+          type: value.type
+        });
         mediaFiles.push(value);
       }
     });
@@ -543,8 +569,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Objetivo da campanha é obrigatório' }, { status: 400 });
     }
 
-    if (mediaFiles.length === 0) {
-      return NextResponse.json({ success: false, error: 'Pelo menos um arquivo é obrigatório' }, { status: 400 });
+    // ✅ Só exigir arquivos se NÃO tiver creative_url
+    if (mediaFiles.length === 0 && !creativeUrl) {
+      return NextResponse.json({ success: false, error: 'Pelo menos um arquivo ou creative_url é obrigatório' }, { status: 400 });
     }
 
     const dailyBudget = parseFloat(dailyBudgetStr);
@@ -556,7 +583,7 @@ export async function POST(request: NextRequest) {
     const imageFiles = mediaFiles.filter(f => !isVideoFile(f));
     const videoFiles = mediaFiles.filter(f => isVideoFile(f));
 
-    console.log('📋 Parâmetros:', { objective, dailyBudget, funnelStage, images: imageFiles.length, videos: videoFiles.length });
+    console.log('📋 Parâmetros:', { objective, dailyBudget, funnelStage, images: imageFiles.length, videos: videoFiles.length, creativeUrl: !!creativeUrl });
 
     // =====================================================
     // ETAPA 1: Upload dos arquivos para Supabase
@@ -566,14 +593,28 @@ export async function POST(request: NextRequest) {
     const uploadedImages: { url: string; file: File }[] = [];
     const uploadedVideos: { url: string; file: File }[] = [];
 
-    for (let i = 0; i < imageFiles.length; i++) {
-      const url = await uploadToSupabase(imageFiles[i], i, 'image');
-      uploadedImages.push({ url, file: imageFiles[i] });
-    }
+    // ✅ Se tiver creative_url, usar ela diretamente (já foi feito upload)
+    if (creativeUrl && mediaFiles.length === 0) {
+      console.log('🎨 Usando creative_url existente (sem novo upload)');
+      // Detectar se é vídeo ou imagem pela extensão
+      const isVideo = /\.(mp4|mov|webm|avi)$/i.test(creativeUrl);
+      if (isVideo) {
+        // Criar um "fake" File para manter compatibilidade
+        uploadedVideos.push({ url: creativeUrl, file: new File([], 'video.mp4', { type: 'video/mp4' }) });
+      } else {
+        uploadedImages.push({ url: creativeUrl, file: new File([], 'image.jpg', { type: 'image/jpeg' }) });
+      }
+    } else {
+      // Upload normal dos arquivos
+      for (let i = 0; i < imageFiles.length; i++) {
+        const url = await uploadToSupabase(imageFiles[i], i, 'image');
+        uploadedImages.push({ url, file: imageFiles[i] });
+      }
 
-    for (let i = 0; i < videoFiles.length; i++) {
-      const url = await uploadToSupabase(videoFiles[i], i, 'video');
-      uploadedVideos.push({ url, file: videoFiles[i] });
+      for (let i = 0; i < videoFiles.length; i++) {
+        const url = await uploadToSupabase(videoFiles[i], i, 'video');
+        uploadedVideos.push({ url, file: videoFiles[i] });
+      }
     }
 
     // =====================================================
@@ -746,9 +787,11 @@ export async function POST(request: NextRequest) {
 
     console.log('📢 Etapa 3: Criando campanha...');
     
-    // 🔥 NOVO: Gerar nomes padronizados com Taxonomia
-    const firstMediaFile = mediaFiles[0];
-    const isFirstVideo = isVideoFile(firstMediaFile);
+    // 🔥 CORRIGIDO: Usar uploadedVideos/uploadedImages em vez de mediaFiles
+    // (mediaFiles fica vazio quando usamos creative_url)
+    const firstUploadedMedia = uploadedVideos[0] || uploadedImages[0];
+    const isFirstVideo = uploadedVideos.length > 0;
+    const firstFileName = firstUploadedMedia?.file?.name || 'creative';
     
     // Mapear audienceStrategy para audienceType da Taxonomia
     const audienceTypeMap: Record<string, NamingInput['audienceType']> = {
@@ -780,7 +823,7 @@ export async function POST(request: NextRequest) {
       ageRange: `${ageMin}-${ageMax}`,
       placement: 'auto',
       mediaFormat: isFirstVideo ? 'video' : 'image',
-      filename: firstMediaFile.name,
+      filename: firstFileName,
       copyVersion: 1,
       launchDate: new Date(),
     };

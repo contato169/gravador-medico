@@ -16,9 +16,6 @@ const nextConfig = {
     },
   },
   
-  // ✅ Aumentar limite de body para requests via middleware
-  middlewareClientMaxBodySize: '100mb',
-  
   // Configuração de imagens externas (Supabase Storage, Facebook CDN)
   images: {
     remotePatterns: [
@@ -58,6 +55,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://connect.facebook.net https://*.facebook.net https://www.googletagmanager.com https://www.google-analytics.com blob:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.run.app https://*.conversionsapigateway.com https://graph.facebook.com https://www.facebook.com https://*.facebook.com https://*.facebook.net https://connect.facebook.net https://*.fbcdn.net https://api.mercadopago.com https://api.mercadopago.com.br https://*.mercadolibre.com https://*.mercadopago.com https://secure-fields.mercadopago.com https://*.mlstatic.com https://events.mercadopago.com https://api.appmax.com.br https://www.google-analytics.com https://www.googletagmanager.com https://*.apify.com https://*.openai.com",
               "img-src 'self' data: https: blob:",
+              "media-src 'self' data: blob: https://*.supabase.co https://*.fbcdn.net", // ✅ Permitir blob: para preview de vídeo
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data: https://fonts.gstatic.com",
               "frame-src 'self' https://www.facebook.com https://web.facebook.com https://*.facebook.com https://www.youtube.com",

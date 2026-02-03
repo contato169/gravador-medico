@@ -670,9 +670,14 @@ export default function AdsLauncherPro() {
       }
       
       if (creativeUrl) formData.append('creative_url', creativeUrl);
-      files.forEach((f, i) => {
-        formData.append(f.type === 'video' ? 'video' + i : 'image' + i, f.file);
-      });
+      
+      // ✅ Só enviar arquivos se NÃO tiver creative_url
+      // (evita duplicar upload e exceder limite de 10MB)
+      if (!creativeUrl) {
+        files.forEach((f, i) => {
+          formData.append(f.type === 'video' ? 'video' + i : 'image' + i, f.file);
+        });
+      }
 
       const response = await fetch('/api/ads/launch-v2', {
         method: 'POST',

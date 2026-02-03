@@ -128,6 +128,50 @@ const BRAZILIAN_STATES = [
 ];
 
 // =====================================================
+// TIPOS DE OBJETIVO (SISTEMA SIMPLIFICADO)
+// =====================================================
+
+type CampaignObjectiveType = 'TRAFEGO' | 'CONVERSAO' | 'REMARKETING';
+
+const CAMPAIGN_OBJECTIVE_OPTIONS: Array<{
+  value: CampaignObjectiveType;
+  label: string;
+  emoji: string;
+  description: string;
+  color: string;
+  borderColor: string;
+  bgColor: string;
+}> = [
+  {
+    value: 'TRAFEGO',
+    label: 'Tráfego',
+    emoji: '🌊',
+    description: 'Gerar visitantes para remarketing',
+    color: 'text-blue-400',
+    borderColor: 'border-blue-500',
+    bgColor: 'bg-blue-500/10',
+  },
+  {
+    value: 'CONVERSAO',
+    label: 'Conversão',
+    emoji: '💰',
+    description: 'Vendas diretas do produto',
+    color: 'text-green-400',
+    borderColor: 'border-green-500',
+    bgColor: 'bg-green-500/10',
+  },
+  {
+    value: 'REMARKETING',
+    label: 'Remarketing',
+    emoji: '🎯',
+    description: 'Converter quem já visitou',
+    color: 'text-purple-400',
+    borderColor: 'border-purple-500',
+    bgColor: 'bg-purple-500/10',
+  },
+];
+
+// =====================================================
 // COMPONENTE PRINCIPAL
 // =====================================================
 
@@ -135,6 +179,7 @@ export default function AdsLauncherPro() {
   // Estados Básicos
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [objective, setObjective] = useState('');
+  const [objectiveType, setObjectiveType] = useState<CampaignObjectiveType>('CONVERSAO');
   const [dailyBudget, setDailyBudget] = useState('30');
   const [linkUrl, setLinkUrl] = useState('');
   const [publishStatus, setPublishStatus] = useState<'PAUSED' | 'ACTIVE'>('PAUSED');
@@ -163,8 +208,14 @@ export default function AdsLauncherPro() {
 
   // Estados do Sistema de 2 Etapas (Meta-Prompt)
   const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [generatedVariacoes, setGeneratedVariacoes] = useState<Array<{
+    primary_text: string;
+    headline: string;
+    cta: string;
+  }>>([]);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [promptGenerated, setPromptGenerated] = useState(false);
+  const [selectedVariacaoIndex, setSelectedVariacaoIndex] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -219,12 +270,13 @@ export default function AdsLauncherPro() {
   };
 
   // =====================================================
-  // SISTEMA DE 2 ETAPAS: GERAR PROMPT COM IA
+  // SISTEMA SIMPLIFICADO: GERAR COPIES COM IA
+  // =====================================================
+  // Usa a base de conhecimento do Gravador Médico embutida.
+  // Usuário só escolhe: TRAFEGO, CONVERSAO ou REMARKETING.
   // =====================================================
 
   const handleGeneratePrompt = async () => {
-    if (!objective.trim()) return;
-
     setIsGeneratingPrompt(true);
     
     try {
@@ -232,31 +284,58 @@ export default function AdsLauncherPro() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          objective,
-          funnelStage,
-          audienceStrategy,
-          targetAudience: 'Profissionais da saúde',
-          productName: 'Gravador Médico',
+          objective_type: objectiveType, // TRAFEGO | CONVERSAO | REMARKETING
         }),
       });
 
       const data = await response.json();
       
-      if (data.success && data.prompt) {
-        setGeneratedPrompt(data.prompt);
+      if (data.success) {
+        // Novo sistema: retorna variações prontas
+        if (data.variacoes && data.variacoes.length > 0) {
+          setGeneratedVariacoes(data.variacoes);
+          setSelectedVariacaoIndex(0);
+          // Usar a primeira variação como prompt editável
+          const primeiraVariacao = data.variacoes[0];
+          setGeneratedPrompt(`📝 PRIMARY TEXT:\n${primeiraVariacao.primary_text}\n\n📌 HEADLINE:\n${primeiraVariacao.headline}\n\n🔘 CTA:\n${primeiraVariacao.cta}`);
+        } else if (data.prompt) {
+          // Fallback para modo legado
+          setGeneratedPrompt(data.prompt);
+        }
         setPromptGenerated(true);
+        
+        // Atualizar objetivo com base no tipo selecionado
+        const objetivoLabel = CAMPAIGN_OBJECTIVE_OPTIONS.find(o => o.value === objectiveType)?.label || objectiveType;
+        setObjective(`Campanha de ${objetivoLabel} - Gravador Médico`);
       } else {
+        console.error('Erro na API:', data.error);
         // Fallback com prompt básico
-        setGeneratedPrompt(`Crie 3 anúncios persuasivos para: ${objective}\n\nFoco: ${funnelStage === 'TOPO' ? 'Awareness e alcance' : funnelStage === 'MEIO' ? 'Engajamento e consideração' : 'Conversão e vendas'}\n\nPúblico: Profissionais da saúde interessados em otimização de tempo`);
+        setGeneratedPrompt(`Erro ao gerar. Tente novamente.\n\nErro: ${data.error || 'Desconhecido'}`);
         setPromptGenerated(true);
       }
     } catch (error) {
       console.error('Erro ao gerar prompt:', error);
-      // Fallback
-      setGeneratedPrompt(`Crie 3 anúncios persuasivos para: ${objective}\n\nFoco: ${funnelStage === 'TOPO' ? 'Awareness e alcance' : funnelStage === 'MEIO' ? 'Engajamento e consideração' : 'Conversão e vendas'}`);
+      setGeneratedPrompt(`Erro de conexão. Verifique sua internet e tente novamente.`);
       setPromptGenerated(true);
     } finally {
       setIsGeneratingPrompt(false);
+    }
+  };
+
+  // Regenerar com outro objetivo ou nova variação
+  const handleRegeneratePrompt = async () => {
+    setPromptGenerated(false);
+    setGeneratedPrompt('');
+    setGeneratedVariacoes([]);
+    await handleGeneratePrompt();
+  };
+
+  // Selecionar uma variação diferente
+  const handleSelectVariacao = (index: number) => {
+    if (generatedVariacoes[index]) {
+      setSelectedVariacaoIndex(index);
+      const variacao = generatedVariacoes[index];
+      setGeneratedPrompt(`📝 PRIMARY TEXT:\n${variacao.primary_text}\n\n📌 HEADLINE:\n${variacao.headline}\n\n🔘 CTA:\n${variacao.cta}`);
     }
   };
 
@@ -447,11 +526,14 @@ export default function AdsLauncherPro() {
   const resetForm = () => {
     setFiles([]);
     setObjective('');
+    setObjectiveType('CONVERSAO');
     setDailyBudget('30');
     setStatus('idle');
     setResult(null);
     setGeneratedPrompt('');
+    setGeneratedVariacoes([]);
     setPromptGenerated(false);
+    setSelectedVariacaoIndex(0);
   };
 
   const isProcessing = ['uploading', 'generating', 'creating'].includes(status);
@@ -683,53 +765,152 @@ export default function AdsLauncherPro() {
               </div>
             </div>
 
-            {/* Card de Objetivo */}
+            {/* Card de Objetivo - SISTEMA SIMPLIFICADO */}
             <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
                 <Target className="w-5 h-5 text-purple-400" />
                 <h3 className="font-semibold text-white">Objetivo da Campanha</h3>
+                <span className="ml-auto text-xs bg-purple-600/30 text-purple-300 px-2 py-1 rounded-full">
+                  IA conhece o produto
+                </span>
               </div>
               <div className="p-6 space-y-4">
-                <input
-                  type="text"
-                  value={objective}
-                  onChange={(e) => {
-                    setObjective(e.target.value);
-                    // Reset prompt quando objetivo muda
-                    setPromptGenerated(false);
-                    setGeneratedPrompt('');
-                  }}
-                  placeholder="Ex: Venda do Gravador Médico para Cardiologistas"
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
                 
-                {/* Botão Gerar Prompt com IA */}
+                {/* Seletor de 3 Objetivos */}
+                <div className="grid grid-cols-3 gap-3">
+                  {CAMPAIGN_OBJECTIVE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setObjectiveType(opt.value);
+                        setPromptGenerated(false);
+                        setGeneratedPrompt('');
+                        setGeneratedVariacoes([]);
+                      }}
+                      className={cn(
+                        'p-4 rounded-xl border-2 text-center transition-all',
+                        objectiveType === opt.value
+                          ? `${opt.borderColor} ${opt.bgColor}`
+                          : 'border-gray-700 hover:border-gray-600'
+                      )}
+                    >
+                      <div className="text-3xl mb-2">{opt.emoji}</div>
+                      <div className={cn('font-semibold', objectiveType === opt.value ? opt.color : 'text-white')}>
+                        {opt.label}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Botão Gerar Copy com IA */}
                 <button
                   onClick={handleGeneratePrompt}
-                  disabled={!objective.trim() || isGeneratingPrompt}
+                  disabled={isGeneratingPrompt}
                   className={cn(
-                    'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all',
-                    objective.trim() && !isGeneratingPrompt
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700'
+                    'w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl font-medium transition-all text-lg',
+                    !isGeneratingPrompt
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-purple-500/20'
                       : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                   )}
                 >
                   {isGeneratingPrompt ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      GPT-5.2 gerando prompt profissional...
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      IA gerando copies profissionais...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-5 h-5" />
-                      🎯 Gerar Prompt com IA (Etapa 1)
+                      <Brain className="w-6 h-6" />
+                      🧠 Gerar Copies com IA
                     </>
                   )}
                 </button>
 
-                {/* Área do Prompt Gerado - Editável */}
+                {/* Variações Geradas */}
                 <AnimatePresence>
-                  {promptGenerated && (
+                  {promptGenerated && generatedVariacoes.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4"
+                    >
+                      {/* Seletor de Variações */}
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-green-400 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4" />
+                          {generatedVariacoes.length} variações geradas - Escolha uma:
+                        </label>
+                        <button
+                          onClick={handleRegeneratePrompt}
+                          disabled={isGeneratingPrompt}
+                          className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                        >
+                          <RefreshCcw className="w-3 h-3" />
+                          Regenerar
+                        </button>
+                      </div>
+
+                      {/* Cards de Variações */}
+                      <div className="grid grid-cols-1 gap-3">
+                        {generatedVariacoes.map((variacao, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleSelectVariacao(index)}
+                            className={cn(
+                              'p-4 rounded-xl border text-left transition-all',
+                              selectedVariacaoIndex === index
+                                ? 'border-green-500 bg-green-900/20'
+                                : 'border-gray-700 hover:border-gray-600 bg-gray-800/50'
+                            )}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                                selectedVariacaoIndex === index
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-700 text-gray-400'
+                              )}>
+                                {index + 1}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {selectedVariacaoIndex === index && '✓ Selecionada'}
+                              </span>
+                            </div>
+                            <p className="text-white text-sm line-clamp-2">{variacao.primary_text}</p>
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">
+                                📌 {variacao.headline}
+                              </span>
+                              <span className="text-xs bg-purple-700/50 px-2 py-1 rounded text-purple-300">
+                                🔘 {variacao.cta}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Textarea para edição manual */}
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-400">
+                          Edite a copy selecionada se necessário:
+                        </label>
+                        <textarea
+                          value={generatedPrompt}
+                          onChange={(e) => setGeneratedPrompt(e.target.value)}
+                          rows={5}
+                          className="w-full px-4 py-3 bg-gray-800 border border-green-600/50 rounded-xl text-white text-sm font-mono placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                          placeholder="A copy selecionada aparecerá aqui..."
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Fallback: Textarea simples se não houver variações */}
+                <AnimatePresence>
+                  {promptGenerated && generatedVariacoes.length === 0 && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
@@ -742,7 +923,7 @@ export default function AdsLauncherPro() {
                           Prompt Gerado - Edite se necessário:
                         </label>
                         <button
-                          onClick={handleGeneratePrompt}
+                          onClick={handleRegeneratePrompt}
                           disabled={isGeneratingPrompt}
                           className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
                         >
@@ -757,17 +938,14 @@ export default function AdsLauncherPro() {
                         className="w-full px-4 py-3 bg-gray-800 border border-green-600/50 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
                         placeholder="O prompt profissional aparecerá aqui..."
                       />
-                      <p className="text-xs text-gray-500">
-                        💡 Você pode editar o prompt antes de publicar. Na Etapa 2, este prompt será usado para gerar as copys finais.
-                      </p>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
                 <p className="text-sm text-gray-400">
                   {promptGenerated 
-                    ? '✅ Prompt pronto! Ajuste se quiser e clique em Publicar (Etapa 2)'
-                    : 'Digite o objetivo e clique para gerar um prompt profissional com GPT-5.2 Vision'
+                    ? '✅ Copies prontas! Ajuste se quiser e faça upload dos criativos.'
+                    : '💡 A IA já conhece o Gravador Médico. Escolha o objetivo e clique para gerar.'
                   }
                 </p>
               </div>

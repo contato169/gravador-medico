@@ -1,44 +1,144 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { 
+  GRAVADOR_MEDICO_KNOWLEDGE, 
+  CAMPAIGN_OBJECTIVES, 
+  generateMetaPrompt,
+  type ObjectiveType 
+} from '@/lib/gravador-medico-knowledge';
 
 // =====================================================
-// API: GERAR PROMPT PROFISSIONAL COM IA (ETAPA 1)
+// API: GERAR PROMPT COM INTELIGÊNCIA DO PRODUTO EMBUTIDA
 // =====================================================
-// Sistema de 2 Etapas (Meta-Prompt Generator):
-// 1. IA gera um prompt profissional de copywriting
-// 2. Usuário revisa/edita → IA usa o prompt para gerar copys finais
+// Sistema simplificado onde o usuário escolhe apenas:
+// - TRAFEGO (Topo de Funil)
+// - CONVERSAO (Fundo de Funil)
+// - REMARKETING (Meio de Funil)
+// 
+// A IA já conhece TUDO sobre o produto Gravador Médico.
 // =====================================================
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Meta-prompt para gerar prompts profissionais
-const META_PROMPT_SYSTEM = `Você é um GERADOR DE PROMPTS especialista em copywriting para anúncios.
-Sua função é criar prompts profissionais que serão usados por outra IA para gerar copys de alta conversão.
-
-REGRAS PARA O PROMPT QUE VOCÊ GERAR:
-1. Seja específico sobre tom, estilo e estrutura
-2. Inclua gatilhos mentais relevantes
-3. Defina claramente o público-alvo
-4. Especifique quantidade de variações
-5. Inclua instruções sobre CTAs
-6. Mencione limitações de caracteres do Meta Ads
-7. Oriente sobre uso de emojis
-
-O prompt que você gerar será usado por GPT-5.2 Vision para criar as copys finais.`;
-
-interface GeneratePromptRequest {
+// Tipos para ambos os modos (legado e novo)
+interface LegacyRequest {
   objective: string;
-  funnelStage: 'TOPO' | 'MEIO' | 'FUNDO';
-  audienceStrategy: string;
+  funnelStage?: 'TOPO' | 'MEIO' | 'FUNDO';
+  audienceStrategy?: string;
   targetAudience?: string;
   productName?: string;
+}
+
+interface NewRequest {
+  objective_type: ObjectiveType;
+}
+
+type GeneratePromptRequest = LegacyRequest | NewRequest;
+
+function isNewRequest(body: GeneratePromptRequest): body is NewRequest {
+  return 'objective_type' in body;
 }
 
 export async function POST(request: Request) {
   try {
     const body: GeneratePromptRequest = await request.json();
+
+    // =====================================================
+    // MODO NOVO: Objetivo pré-definido (TRAFEGO/CONVERSAO/REMARKETING)
+    // =====================================================
+    if (isNewRequest(body)) {
+      const { objective_type } = body;
+
+      // Validar objetivo
+      if (!objective_type || !CAMPAIGN_OBJECTIVES[objective_type]) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Objetivo inválido. Use: TRAFEGO, CONVERSAO ou REMARKETING' 
+          },
+          { status: 400 }
+        );
+      }
+
+      const objective = CAMPAIGN_OBJECTIVES[objective_type];
+      const product = GRAVADOR_MEDICO_KNOWLEDGE;
+
+      console.log(`📝 [Prompt Generator] Modo NOVO - Objetivo: ${objective.label}`);
+      console.log(`   📊 Estágio: ${objective.estagio_funil}`);
+      console.log(`   🎯 Foco: ${objective.foco}`);
+
+      // Gerar o meta-prompt completo usando a função helper
+      const metaPrompt = generateMetaPrompt(objective_type);
+
+      // Chamar GPT-4o para gerar as variações de copy
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `Você é um copywriter especialista em Direct Response Marketing para produtos médicos.
+Você SEMPRE responde em formato JSON válido.
+Você conhece profundamente o produto "${product.nome}" e sabe exatamente como falar com médicos.
+Seu objetivo é criar copies que convertem, respeitando o tom e as regras específicas de cada estágio do funil.`
+          },
+          {
+            role: 'user',
+            content: metaPrompt
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 2000,
+        response_format: { type: "json_object" }
+      });
+
+      const responseContent = completion.choices[0]?.message?.content;
+
+      if (!responseContent) {
+        return NextResponse.json(
+          { success: false, error: 'Falha ao gerar resposta da IA' },
+          { status: 500 }
+        );
+      }
+
+      // Parse do JSON
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(responseContent);
+      } catch {
+        console.error('Erro ao parsear JSON:', responseContent);
+        return NextResponse.json(
+          { success: false, error: 'Resposta da IA não é JSON válido' },
+          { status: 500 }
+        );
+      }
+
+      console.log(`✅ [Prompt Generator] ${parsedResponse.variacoes?.length || 0} variações geradas`);
+
+      return NextResponse.json({
+        success: true,
+        objective: {
+          type: objective_type,
+          label: objective.label,
+          estagio_funil: objective.estagio_funil,
+          foco: objective.foco,
+          tom: objective.tom
+        },
+        variacoes: parsedResponse.variacoes || [],
+        prompt: metaPrompt, // Compatibilidade com modo legado
+        meta: {
+          produto: product.nome,
+          model: 'gpt-4o',
+          tokens_used: completion.usage?.total_tokens || 0,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // =====================================================
+    // MODO LEGADO: Objetivo livre digitado pelo usuário
+    // =====================================================
     const { objective, funnelStage, audienceStrategy, targetAudience, productName } = body;
 
     if (!objective) {
@@ -47,6 +147,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    console.log(`📝 [Prompt Generator] Modo LEGADO - Objetivo: ${objective}`);
 
     // Mapear estratégia de audiência para texto
     const audienceMap: Record<string, string> = {
@@ -67,10 +169,10 @@ export async function POST(request: Request) {
 
 OBJETIVO DA CAMPANHA: ${objective}
 
-ESTÁGIO DO FUNIL: ${funnelStage}
-- Foco: ${funnelFocus[funnelStage] || 'Conversão'}
+ESTÁGIO DO FUNIL: ${funnelStage || 'TOPO'}
+- Foco: ${funnelFocus[funnelStage || 'TOPO']}
 
-ESTRATÉGIA DE PÚBLICO: ${audienceMap[audienceStrategy] || audienceStrategy}
+ESTRATÉGIA DE PÚBLICO: ${audienceMap[audienceStrategy || 'COLD_WINNER'] || audienceStrategy}
 
 PÚBLICO-ALVO: ${targetAudience || 'Profissionais da saúde'}
 
@@ -92,7 +194,20 @@ O prompt deve ser completo e pronto para ser usado diretamente.`;
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: META_PROMPT_SYSTEM },
+        { 
+          role: 'system', 
+          content: `Você é um GERADOR DE PROMPTS especialista em copywriting para anúncios.
+Sua função é criar prompts profissionais que serão usados por outra IA para gerar copys de alta conversão.
+
+REGRAS PARA O PROMPT QUE VOCÊ GERAR:
+1. Seja específico sobre tom, estilo e estrutura
+2. Inclua gatilhos mentais relevantes
+3. Defina claramente o público-alvo
+4. Especifique quantidade de variações
+5. Inclua instruções sobre CTAs
+6. Mencione limitações de caracteres do Meta Ads
+7. Oriente sobre uso de emojis` 
+        },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
@@ -121,7 +236,7 @@ O prompt deve ser completo e pronto para ser usado diretamente.`;
     });
 
   } catch (error: unknown) {
-    console.error('Erro ao gerar prompt:', error);
+    console.error('[Prompt Generator] Erro:', error);
     return NextResponse.json(
       { 
         success: false, 
@@ -130,4 +245,24 @@ O prompt deve ser completo e pronto para ser usado diretamente.`;
       { status: 500 }
     );
   }
+}
+
+// GET para retornar os objetivos disponíveis
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    objectives: Object.entries(CAMPAIGN_OBJECTIVES).map(([key, value]) => ({
+      type: key,
+      label: value.label,
+      emoji: value.emoji,
+      descricao: value.descricao,
+      estagio_funil: value.estagio_funil,
+      cta_ideal: value.cta_ideal
+    })),
+    produto: {
+      nome: GRAVADOR_MEDICO_KNOWLEDGE.nome,
+      proposta: GRAVADOR_MEDICO_KNOWLEDGE.proposta_central,
+      preco: GRAVADOR_MEDICO_KNOWLEDGE.preco.metodo
+    }
+  });
 }

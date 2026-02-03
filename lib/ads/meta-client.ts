@@ -75,11 +75,28 @@ export interface MetaApiError {
 }
 
 export function handleMetaError(error: any): never {
-  console.error('❌ Meta API Error:', error);
+  console.error('❌ Meta API Error RAW:', JSON.stringify(error, null, 2));
 
-  // Erros comuns do Facebook
-  const errorCode = error?.error?.code || error?.code;
-  const errorMessage = error?.error?.message || error?.message || 'Erro desconhecido';
+  // Extrair informações do erro
+  const errorObj = error?.error || error?.response?.data?.error || error;
+  const errorCode = errorObj?.code;
+  const errorSubcode = errorObj?.error_subcode;
+  const errorMessage = errorObj?.message || error?.message || 'Erro desconhecido';
+  const errorType = errorObj?.type;
+  const errorUserTitle = errorObj?.error_user_title;
+  const errorUserMsg = errorObj?.error_user_msg;
+  const fbtrace_id = errorObj?.fbtrace_id;
+  const errorData = errorObj?.error_data;
+
+  console.error('📋 DETALHES DO ERRO META:');
+  console.error('   Code:', errorCode);
+  console.error('   Subcode:', errorSubcode);
+  console.error('   Type:', errorType);
+  console.error('   Message:', errorMessage);
+  console.error('   User Title:', errorUserTitle);
+  console.error('   User Message:', errorUserMsg);
+  console.error('   FBTrace ID:', fbtrace_id);
+  console.error('   Error Data:', JSON.stringify(errorData, null, 2));
 
   const errorMap: Record<number, string> = {
     190: 'Token de acesso expirado ou inválido. Renove o token no Business Manager.',
@@ -93,8 +110,9 @@ export function handleMetaError(error: any): never {
   };
 
   const friendlyMessage = errorMap[errorCode] || errorMessage;
+  const fullMessage = errorUserMsg || friendlyMessage;
 
-  throw new Error(`Meta API Error [${errorCode}]: ${friendlyMessage}`);
+  throw new Error(`Meta API Error [${errorCode}]: ${fullMessage}`);
 }
 
 // =====================================================
@@ -144,11 +162,15 @@ export async function createCampaign(
   try {
     const account = new AdAccount(normalizeAdAccountId(adAccountId));
     
-    const campaignData = {
+    const campaignData: Record<string, unknown> = {
       name: params.name,
       objective: params.objective,
       status: params.status,
       special_ad_categories: params.special_ad_categories || [],
+      // ✅ NOVO: Campo obrigatório na API v21.0+
+      // False = cada AdSet tem seu próprio orçamento
+      // True = AdSets podem compartilhar até 20% do orçamento
+      is_adset_budget_sharing_enabled: false,
     };
 
     console.log('📢 Criando campanha:', campaignData);

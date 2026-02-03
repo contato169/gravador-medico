@@ -296,12 +296,16 @@ export default function AdsLauncherPro() {
   const [analysis, setAnalysis] = useState<CreativeAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStep, setAnalysisStep] = useState('');
   
   // Fase 3
   const [objectiveType, setObjectiveType] = useState<ObjectiveType>('TRAFEGO');
   const [funnelStage, setFunnelStage] = useState('TOPO');
   const [additionalContext, setAdditionalContext] = useState('');
   const [isGeneratingCopies, setIsGeneratingCopies] = useState(false);
+  const [copiesProgress, setCopiesProgress] = useState(0);
+  const [copiesStep, setCopiesStep] = useState('');
   
   // Fase 4
   const [copies, setCopies] = useState<{ variations: CopyVariation[]; generation_notes: string } | null>(null);
@@ -408,6 +412,31 @@ export default function AdsLauncherPro() {
     };
     setFiles([uploadedFile]);
     setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    setAnalysisStep('Enviando criativo...');
+
+    // Simular progresso durante análise
+    const progressInterval = setInterval(() => {
+      setAnalysisProgress(prev => {
+        if (prev < 15) {
+          setAnalysisStep('📤 Enviando arquivo...');
+          return prev + 3;
+        } else if (prev < 40) {
+          setAnalysisStep('🔍 Analisando elementos visuais...');
+          return prev + 2;
+        } else if (prev < 65) {
+          setAnalysisStep('🧠 IA processando cores e composição...');
+          return prev + 1.5;
+        } else if (prev < 85) {
+          setAnalysisStep('💡 Gerando recomendações...');
+          return prev + 1;
+        } else if (prev < 95) {
+          setAnalysisStep('✨ Finalizando análise...');
+          return prev + 0.5;
+        }
+        return prev;
+      });
+    }, 200);
 
     try {
       const token = getAuthToken();
@@ -421,6 +450,8 @@ export default function AdsLauncherPro() {
         body: formData
       });
 
+      clearInterval(progressInterval);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Erro ao analisar criativo');
@@ -429,6 +460,12 @@ export default function AdsLauncherPro() {
       const data = await response.json();
       
       if (data.success && data.analysis) {
+        setAnalysisProgress(100);
+        setAnalysisStep('✅ Análise completa!');
+        
+        // Pequeno delay para mostrar 100%
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         setAnalysis(data.analysis);
         setCreativeUrl(data.creative_url);
         setObjectiveType(data.analysis.recommended_objective);
@@ -442,6 +479,7 @@ export default function AdsLauncherPro() {
         throw new Error(data.error || 'Análise não retornou dados');
       }
     } catch (error: any) {
+      clearInterval(progressInterval);
       console.error('[AdsLauncherPro] Erro na análise:', error);
       toast.error('Erro: ' + error.message);
       setAnalysis(null);
@@ -462,6 +500,31 @@ export default function AdsLauncherPro() {
   const handleGenerateCopies = async () => {
     if (!analysis) return;
     setIsGeneratingCopies(true);
+    setCopiesProgress(0);
+    setCopiesStep('Iniciando geração de copys...');
+
+    // Simular progresso durante geração
+    const progressInterval = setInterval(() => {
+      setCopiesProgress(prev => {
+        if (prev < 20) {
+          setCopiesStep('📝 Analisando objetivo da campanha...');
+          return prev + 4;
+        } else if (prev < 45) {
+          setCopiesStep('🎯 Identificando ângulos de persuasão...');
+          return prev + 3;
+        } else if (prev < 70) {
+          setCopiesStep('✍️ Escrevendo variações de copy...');
+          return prev + 2;
+        } else if (prev < 90) {
+          setCopiesStep('🔄 Otimizando para conversão...');
+          return prev + 1.5;
+        } else if (prev < 98) {
+          setCopiesStep('✨ Polindo headlines e CTAs...');
+          return prev + 0.5;
+        }
+        return prev;
+      });
+    }, 250);
 
     try {
       const token = getAuthToken();
@@ -479,10 +542,18 @@ export default function AdsLauncherPro() {
         })
       });
 
+      clearInterval(progressInterval);
+
       if (!response.ok) throw new Error('Erro ao gerar copys');
       const data = await response.json();
       
       if (data.success && data.variations) {
+        setCopiesProgress(100);
+        setCopiesStep('✅ Copys geradas com sucesso!');
+        
+        // Pequeno delay para mostrar 100%
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         setCopies({
           variations: data.variations,
           generation_notes: data.generation_notes || 'Copys otimizadas'
@@ -491,6 +562,7 @@ export default function AdsLauncherPro() {
         completePhase(3);
       }
     } catch (error: any) {
+      clearInterval(progressInterval);
       toast.error('Erro: ' + error.message);
     } finally {
       setIsGeneratingCopies(false);
@@ -1001,13 +1073,40 @@ export default function AdsLauncherPro() {
               onChange={handleFileSelect} className="hidden" id="file-upload" disabled={isAnalyzing} />
             <label htmlFor="file-upload" className="cursor-pointer block">
               {isAnalyzing ? (
-                <div>
+                <div className="py-6">
                   <div className="relative w-16 h-16 mx-auto mb-4">
                     <Loader2 className="w-16 h-16 text-purple-400 animate-spin" />
                     <Brain className="w-8 h-8 text-purple-200 absolute inset-0 m-auto" />
                   </div>
-                  <p className="text-lg font-semibold text-white mb-2">🤖 Analisando com GPT-5.2...</p>
-                  <p className="text-sm text-gray-400">Identificando elementos, cores e mood</p>
+                  <p className="text-lg font-semibold text-white mb-2">🤖 Analisando com GPT-5.2 Vision...</p>
+                  
+                  {/* Barra de Progresso */}
+                  <div className="max-w-xs mx-auto mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-purple-300">{analysisStep}</span>
+                      <span className="text-sm font-bold text-purple-400">{Math.round(analysisProgress)}%</span>
+                    </div>
+                    <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${analysisProgress}%` }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        style={{
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer 2s linear infinite'
+                        }}
+                      />
+                    </div>
+                    <style jsx>{`
+                      @keyframes shimmer {
+                        0% { background-position: 200% 0; }
+                        100% { background-position: -200% 0; }
+                      }
+                    `}</style>
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 mt-4">Isso pode levar alguns segundos...</p>
                 </div>
               ) : files.length > 0 ? (
                 <div>
@@ -1227,6 +1326,32 @@ export default function AdsLauncherPro() {
                 <><Sparkles className="w-5 h-5 mr-2" />✨ Gerar 3 Variações de Copy</>
               )}
             </Button>
+            
+            {/* Barra de Progresso de Geração de Copy */}
+            {isGeneratingCopies && (
+              <div className="mt-4 p-4 bg-gray-800/50 rounded-lg border border-purple-500/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-purple-300 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 animate-pulse" />
+                    {copiesStep}
+                  </span>
+                  <span className="text-sm font-bold text-purple-400">{Math.round(copiesProgress)}%</span>
+                </div>
+                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${copiesProgress}%` }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    style={{
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 1.5s linear infinite'
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">GPT-5.2 está criando variações otimizadas...</p>
+              </div>
+            )}
           </Card>
         </div>
       )}

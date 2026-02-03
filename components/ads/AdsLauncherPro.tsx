@@ -114,6 +114,11 @@ interface CopyVariation {
   predicted_performance: number;
   performance_label: string;
   reasoning: string;
+  duplicationCheck?: {
+    isDuplicate: boolean;
+    similarity: number;
+    warning: string | null;
+  };
 }
 
 interface CampaignResult {
@@ -1123,6 +1128,29 @@ export default function AdsLauncherPro() {
                   {files[0].type === 'image' && (
                     <img src={files[0].preview} alt="Preview" className="w-32 h-32 object-cover rounded-lg mx-auto mt-4 border border-gray-700" />
                   )}
+                  {/* ✅ NOVO: Preview de Vídeo */}
+                  {files[0].type === 'video' && (
+                    <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700 max-w-md mx-auto">
+                      <div className="flex items-center gap-2 mb-3 text-sm text-purple-300">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        🎬 Preview do Vídeo
+                      </div>
+                      <video
+                        controls
+                        className="w-full rounded-lg shadow-lg"
+                        style={{ maxHeight: '300px' }}
+                        src={files[0].preview}
+                      >
+                        Seu navegador não suporta o elemento de vídeo.
+                      </video>
+                      <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+                        <span>{files[0].file.name}</span>
+                        <span>{(files[0].file.size / 1024 / 1024).toFixed(2)} MB</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -1463,8 +1491,36 @@ export default function AdsLauncherPro() {
             {copies.variations.map((variation, index) => (
               <Card key={variation.id}
                 className={cn("p-6 transition-all bg-gray-900/80",
+                  variation.duplicationCheck?.isDuplicate ? 'border-2 border-yellow-500/50' : // ✅ Destaque para duplicatas
                   selectedVariation === variation.id ? 'border-2 border-purple-500 shadow-lg shadow-purple-500/20' :
                   'border border-gray-700 hover:border-gray-600')}>
+                
+                {/* ✅ AVISO DE DUPLICATA */}
+                {variation.duplicationCheck?.isDuplicate && (
+                  <div className="mb-4 p-3 bg-yellow-600/20 border border-yellow-600/50 rounded-lg flex items-start gap-2">
+                    <svg className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="text-sm">
+                      <p className="font-semibold text-yellow-400">⚠️ Copy Similar Detectada</p>
+                      <p className="text-yellow-300 mt-1">{variation.duplicationCheck.warning}</p>
+                      <p className="text-xs text-yellow-400/70 mt-1">
+                        Recomendação: Edite esta copy ou gere novas variações
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* ✅ Badge de copy única */}
+                {variation.duplicationCheck && !variation.duplicationCheck.isDuplicate && variation.duplicationCheck.similarity > 0 && (
+                  <div className="mb-3 inline-flex items-center gap-1 px-2 py-1 bg-green-500/10 border border-green-500/30 rounded text-xs text-green-400">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Copy única ({100 - variation.duplicationCheck.similarity}% original)
+                  </div>
+                )}
+                
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleSelectVariation(variation.id)}>
                     {index === 0 && <Trophy className="w-7 h-7 text-yellow-400" />}

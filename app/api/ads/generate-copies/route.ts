@@ -9,6 +9,7 @@
  * - 3 variações de copy com ranking
  * - Indicação da copy CAMPEÃ
  * - Justificativas para cada variação
+ * - Verificação de duplicatas contra anúncios ativos
  * 
  * =====================================================
  */
@@ -23,6 +24,12 @@ import {
 import { ObjectiveType } from '@/lib/gravador-medico-knowledge';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import {
+  getActiveCampaignsCache,
+  checkCopyDuplication,
+  generateAntiDuplicationContext,
+  ActiveCampaignAd
+} from '@/lib/ads/active-campaigns-analyzer';
 
 interface GenerateCopiesRequest {
   objective_type: ObjectiveType;
@@ -88,6 +95,31 @@ export async function POST(req: NextRequest) {
 
     console.log(`✍️ [Generate Copies API] Objetivo: ${objective_type}, Regenerar: ${regenerate || false}`);
 
+    // =====================================================
+    // BUSCAR CAMPANHAS ATIVAS PARA EVITAR DUPLICATAS
+    // =====================================================
+    let activeCampaigns: ActiveCampaignAd[] = [];
+    let antiDuplicationContext = '';
+    
+    try {
+      // Buscar ID da conta Meta do banco
+      const accountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
+      
+      if (accountId) {
+        activeCampaigns = await getActiveCampaignsCache(accountId);
+        
+        if (activeCampaigns.length > 0) {
+          antiDuplicationContext = generateAntiDuplicationContext(activeCampaigns);
+          console.log(`📊 [Generate Copies API] ${activeCampaigns.length} anúncios ativos encontrados para verificação de duplicatas`);
+        }
+      }
+    } catch (cacheError) {
+      console.warn('⚠️ [Generate Copies API] Não foi possível buscar campanhas ativas:', cacheError);
+    }
+
+    // Combinar contexto adicional com contexto anti-duplicata
+    const enrichedContext = [additional_context, antiDuplicationContext].filter(Boolean).join('\n\n');
+
     // Gerar copies com previsão de performance
     let result;
     
@@ -96,7 +128,7 @@ export async function POST(req: NextRequest) {
       result = await regenerateCopies(
         objective_type,
         creative_analysis,
-        additional_context,
+        enrichedContext,
         previous_variations
       );
     } else {
@@ -104,18 +136,45 @@ export async function POST(req: NextRequest) {
       result = await generateCopiesWithWinnerPrediction(
         objective_type,
         creative_analysis,
-        additional_context
+        enrichedContext
       );
     }
 
     console.log('✅ [Generate Copies API] Copies geradas com sucesso');
 
-    // Log simplificado (sem salvar no banco por enquanto)
-    console.log(`📊 [Generate Copies API] ${result.variations?.length || 0} variações geradas para ${objective_type}`);
+    // =====================================================
+    // VERIFICAR DUPLICATAS NAS COPIES GERADAS
+    // =====================================================
+    const validatedVariations = result.variations?.map((variation: CopyVariation) => {
+      const duplicationCheck = checkCopyDuplication(
+        variation.primary_text,
+        activeCampaigns
+      );
+      
+      return {
+        ...variation,
+        duplicationCheck: {
+          isDuplicate: duplicationCheck.isDuplicate,
+          similarity: duplicationCheck.similarity,
+          warning: duplicationCheck.warning
+        }
+      };
+    }) || [];
+
+    // Log simplificado
+    console.log(`📊 [Generate Copies API] ${validatedVariations.length} variações geradas e validadas para ${objective_type}`);
+    
+    // Contar duplicatas
+    const duplicatesCount = validatedVariations.filter((v: any) => v.duplicationCheck?.isDuplicate).length;
+    if (duplicatesCount > 0) {
+      console.warn(`⚠️ [Generate Copies API] ${duplicatesCount} variações similares a anúncios existentes`);
+    }
 
     return NextResponse.json({
       success: true,
-      ...result
+      variations: validatedVariations,
+      generation_notes: result.generation_notes,
+      activeCampaignsCount: activeCampaigns.length
     });
 
   } catch (error: any) {

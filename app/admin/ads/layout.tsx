@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Facebook, Layers } from 'lucide-react';
+import { Facebook, Layers, Users, Sparkles, Image } from 'lucide-react';
 
 const tabs = [
   {
@@ -17,6 +17,18 @@ const tabs = [
     label: 'META + GA4',
     icon: Layers,
     description: 'Análise combinada',
+  },
+  {
+    href: '/admin/ads/publicos',
+    label: 'PÚBLICOS',
+    icon: Users,
+    description: 'Custom Audiences',
+  },
+  {
+    href: '/admin/ads/criativos',
+    label: 'CRIATIVOS',
+    icon: Image,
+    description: 'Análise de criativos',
   },
 ];
 

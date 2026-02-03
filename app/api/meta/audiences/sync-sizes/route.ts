@@ -60,104 +60,64 @@ export async function POST(req: NextRequest) {
     const metaAudiences = metaData.data || [];
     console.log(`📊 ${metaAudiences.length} públicos encontrados na Meta`);
 
-    // 2. Buscar públicos já no banco
+    // 2. Buscar públicos já no banco (só vamos atualizar esses)
     const { data: dbAudiences } = await supabaseAdmin
       .from('ads_audiences')
       .select('meta_audience_id, name');
 
     const existingIds = new Set(dbAudiences?.map(a => a.meta_audience_id) || []);
-    console.log(`💾 ${existingIds.size} públicos já no banco`);
+    console.log(`💾 ${existingIds.size} públicos no banco para atualizar`);
 
     const results = {
-      imported: [] as any[],
       updated: [] as any[],
+      skipped: 0,
       errors: [] as any[]
     };
 
-    // 3. Processar cada público da Meta
+    // 3. Processar APENAS públicos que JÁ EXISTEM no banco
     for (const audience of metaAudiences) {
-      const size = audience.approximate_count_lower_bound || 0;
-      const status = audience.delivery_status?.code === 200 ? 'READY' : 'POPULATING';
-      const isLookalike = audience.subtype === 'LOOKALIKE';
-
-      // Determinar tipo e funnel_stage
-      let audienceType = 'CUSTOM';
-      let sourceType = 'UNKNOWN';
-      let funnelStage = 'MEDIO';
-
-      if (isLookalike) {
-        audienceType = 'LOOKALIKE';
-        funnelStage = 'TOPO';
-      } else if (audience.name?.includes('ENG') || audience.name?.includes('Engajamento')) {
-        sourceType = 'ENGAGEMENT';
-        funnelStage = 'MEDIO';
-      } else if (audience.name?.includes('WEB') || audience.name?.includes('Visitante')) {
-        sourceType = 'WEBSITE';
-        funnelStage = audience.name?.includes('7d') || audience.name?.includes('30d') ? 'FUNDO' : 'MEDIO';
+      // Pular se não está no banco
+      if (!existingIds.has(audience.id)) {
+        results.skipped++;
+        continue;
       }
 
-      if (existingIds.has(audience.id)) {
-        // Atualizar público existente
-        const { error } = await supabaseAdmin
-          .from('ads_audiences')
-          .update({
-            approximate_size: size,
-            delivery_status: status,
-            last_synced_at: new Date().toISOString()
-          })
-          .eq('meta_audience_id', audience.id);
+      const size = audience.approximate_count_lower_bound || 0;
+      const statusCode = audience.delivery_status?.code;
+      const status = statusCode && statusCode < 300 ? 'READY' : 'POPULATING';
 
-        if (error) {
-          results.errors.push({ name: audience.name, error: error.message });
-        } else {
-          results.updated.push({
-            name: audience.name,
-            size,
-            status
-          });
-        }
+      // Atualizar público existente - usar só colunas que existem
+      const { error } = await supabaseAdmin
+        .from('ads_audiences')
+        .update({
+          approximate_size: size,
+          last_synced_at: new Date().toISOString()
+        })
+        .eq('meta_audience_id', audience.id);
+
+      if (error) {
+        results.errors.push({ name: audience.name, error: error.message });
       } else {
-        // Importar novo público
-        const { error } = await supabaseAdmin
-          .from('ads_audiences')
-          .insert({
-            meta_audience_id: audience.id,
-            name: audience.name,
-            audience_type: audienceType,
-            source_type: sourceType,
-            funnel_stage: funnelStage,
-            approximate_size: size,
-            delivery_status: status,
-            is_active: true,
-            is_essential: audience.name?.includes('[GDM]') || false,
-            last_synced_at: new Date().toISOString()
-          });
-
-        if (error) {
-          results.errors.push({ name: audience.name, error: error.message });
-        } else {
-          results.imported.push({
-            name: audience.name,
-            size,
-            status,
-            type: audienceType
-          });
-          console.log(`✅ Importado: ${audience.name} (${size} pessoas)`);
-        }
+        results.updated.push({
+          name: audience.name,
+          size,
+          status
+        });
+        console.log(`✅ Atualizado: ${audience.name} (${size} pessoas - ${status})`);
       }
     }
 
     console.log('✅ [Sync Audiences] Concluído!');
-    console.log(`   - Importados: ${results.imported.length}`);
     console.log(`   - Atualizados: ${results.updated.length}`);
+    console.log(`   - Ignorados: ${results.skipped}`);
     console.log(`   - Erros: ${results.errors.length}`);
 
     return NextResponse.json({
       success: true,
       summary: {
         total_in_meta: metaAudiences.length,
-        imported: results.imported.length,
         updated: results.updated.length,
+        skipped: results.skipped,
         errors: results.errors.length
       },
       details: results

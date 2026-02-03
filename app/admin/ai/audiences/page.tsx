@@ -452,27 +452,20 @@ export default function AudiencesPage() {
         throw new Error(data.error || 'Erro ao sincronizar');
       }
 
-      if (data.imported > 0) {
+      if (data.summary?.updated > 0) {
         toast.success(
-          `✅ ${data.imported} públicos importados da Meta!`,
+          `✅ ${data.summary.updated} públicos atualizados!`,
           {
-            description: data.updated > 0 
-              ? `${data.updated} tamanhos atualizados` 
-              : 'Sincronização concluída'
+            description: `Tamanhos sincronizados com a Meta API`
           }
-        );
-      } else if (data.updated > 0) {
-        toast.success(
-          `✅ ${data.updated} tamanhos atualizados`,
-          { description: 'Todos os públicos já estavam sincronizados' }
         );
       } else {
         toast.info('Nenhuma atualização necessária', {
-          description: `${data.total_meta_audiences} públicos na Meta`
+          description: `${data.summary?.total_in_meta || 0} públicos na Meta, ${data.summary?.skipped || 0} ignorados`
         });
       }
 
-      // Recarregar lista para mostrar novos públicos
+      // Recarregar lista para mostrar novos dados
       await loadAudiences();
 
     } catch (error: any) {

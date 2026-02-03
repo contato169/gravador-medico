@@ -198,6 +198,7 @@ async function imageToBase64(imagePath: string): Promise<string> {
 
 /**
  * Analisa frames visuais com GPT-5.2 Vision
+ * ✅ PROMPT APRIMORADO - Compliance completo Meta Ads
  */
 export async function analyzeFramesWithGPT(
   framePaths: string[],
@@ -209,6 +210,11 @@ export async function analyzeFramesWithGPT(
   summary: string;
   recommended_objective?: string;
   copy_angles?: string[];
+  visualElements?: string[];
+  moodAtmosphere?: string;
+  hooks?: string[];
+  cta?: string;
+  confidence?: number;
 }> {
   try {
     console.log(`🤖 [VideoAnalyzer] Analisando ${framePaths.length} frames com GPT-5.2 Vision...`);
@@ -221,49 +227,101 @@ export async function analyzeFramesWithGPT(
       })
     );
     
-    // Prompt de análise completo
+    // ✅ PROMPT APRIMORADO - Baseado na documentação Meta Ads 2026
     const prompt = `
-Analise este vídeo publicitário para anúncios do Meta/Facebook/Instagram.
+Você é um especialista em análise de criativos para Meta Ads (Facebook/Instagram).
 
-**TRANSCRIÇÃO DO ÁUDIO:**
-${transcription || '[Sem áudio/transcrição]'}
+**📹 VÍDEO ANALISADO:**
+- ${framePaths.length} frames extraídos (1 frame a cada 2 segundos)
+- Duração estimada: ${framePaths.length * 2} segundos
 
-**FRAMES VISUAIS:** ${base64Frames.length} frames fornecidos
+**🎤 TRANSCRIÇÃO DO ÁUDIO:**
+${transcription || '[Áudio não transcrito - sem FFmpeg ou sem áudio]'}
 
-**ANÁLISE SOLICITADA:**
+---
 
-1. **Compliance Meta Ads:**
-   - Texto excessivo nas imagens? (regra dos 20%)
-   - Claims médicos/financeiros proibidos?
-   - Conteúdo sensível?
+## 🎯 ANÁLISE SOLICITADA
 
-2. **Qualidade Técnica:**
-   - Resolução e clareza visual
-   - Qualidade do áudio (se houver transcrição)
-   - Edição profissional
+Analise o vídeo **EM PROFUNDIDADE** e retorne um JSON estruturado:
 
-3. **Efetividade Publicitária:**
-   - Hook inicial (primeiros 3 segundos captam atenção?)
-   - CTA claro (chamada para ação)
-   - Storytelling e estrutura narrativa
+### 1️⃣ **recommended_objective** (string)
+Objetivo recomendado:
+- **"SALES"** - Vídeo direto, produto visível, CTA de compra
+- **"TRAFEGO"** - Educativo/inspiracional, CTA "Saiba mais"
+- **"ENGAGEMENT"** - Storytelling emocional, sem produto explícito
 
-4. **Objetivo Recomendado:**
-   - AWARENESS (reconhecimento de marca)
-   - TRAFFIC (tráfego para site)
-   - ENGAGEMENT (engajamento)
-   - LEADS (geração de leads)
-   - SALES (conversões/vendas)
+### 2️⃣ **confidence** (number 0-100)
+Nível de confiança da recomendação
 
-5. **Ângulos de Copy Sugeridos:**
-   - 3 ângulos diferentes para usar no texto do anúncio
+### 3️⃣ **visualElements** (array)
+Liste 3-5 elementos visuais **ESPECÍFICOS**:
+- "Gancho nos primeiros 1-3s: [descrever]"
+- "Legendas queimadas visíveis: [sim/não]"
+- "Logo/branding: [posição, momento]"
+- "CTA visual: [descrever se houver]"
+- "Qualidade: [profissional/amador]"
 
-**RESPONDA EXATAMENTE NESTE FORMATO JSON:**
+**SEJA ESPECÍFICO:** ✅ "Logo aos 2s no canto superior direito" vs ❌ "tem logo"
+
+### 4️⃣ **moodAtmosphere** (string)
+Descreva em 2-3 frases:
+- Tom (profissional, descontraído, urgente, inspirador)
+- Emoções transmitidas
+- Ritmo (rápido, lento, dinâmico)
+
+### 5️⃣ **hooks** (array)
+Ganchos identificados:
+- "Hook inicial (0-3s): [EXATO]"
+- "Dor/promessa: [citar da transcrição]"
+- "Demonstração: [descrever]"
+- "Prova social: [se houver]"
+
+### 6️⃣ **cta** (string)
+CTA identificado (visual, áudio ou implícito)
+
+### 7️⃣ **warnings** (array)
+**COMPLIANCE META ADS - Verificar:**
+1. ⚠️ Alegações enganosas ("garantido", "100%", "resultados em X dias")
+2. ⚠️ Conteúdo proibido (drogas, armas, nudez, violência)
+3. ⚠️ Atributos pessoais ("Você tem diabetes?", "Você está acima do peso?")
+4. ⚠️ Comparações corporais excessivas (antes/depois)
+5. ⚠️ Preços/condições não claros
+6. ⚠️ Direitos autorais (música, imagens sem permissão)
+7. ⚠️ CTA inconsistente com landing page
+8. ⚠️ Claims de saúde/finanças sem disclaimer
+9. ⚠️ Clickbait/sensacionalismo
+10. ⚠️ Texto excessivo (>20% da tela)
+
+Formato: ["⚠️ Problema: descrição"] ou ["✅ Nenhum problema detectado"]
+
+### 8️⃣ **suggestions** (array)
+Sugestões **ESPECÍFICAS** (não genéricas!):
+- ❌ RUIM: "Adicione legenda"
+- ✅ BOM: "Adicione legenda queimada nos primeiros 3s para reforçar o hook"
+
+### 9️⃣ **isCompliant** (boolean)
+Está em compliance?
+
+### 🔟 **summary** (string)
+Resumo executivo (2-3 frases)
+
+### 1️⃣1️⃣ **copy_angles** (array)
+3 ângulos de copy sugeridos baseados no criativo
+
+---
+
+**📝 FORMATO JSON EXATO:**
 {
-  "isCompliant": true,
-  "warnings": ["lista de avisos se houver problemas"],
-  "suggestions": ["sugestões de melhoria"],
-  "summary": "resumo da análise em 2-3 frases",
   "recommended_objective": "SALES",
+  "confidence": 85,
+  "visualElements": ["elemento 1", "elemento 2"],
+  "moodAtmosphere": "Descrição...",
+  "hooks": ["hook 1", "hook 2"],
+  "cta": "CTA identificado",
+  "warnings": ["⚠️ ou ✅"],
+  "suggestions": ["sugestão específica"],
+  "isCompliant": true,
+  "summary": "Resumo...",
   "copy_angles": ["ângulo 1", "ângulo 2", "ângulo 3"]
 }
 `.trim();
@@ -274,7 +332,7 @@ ${transcription || '[Sem áudio/transcrição]'}
       messages: [
         {
           role: 'system',
-          content: 'Você é um especialista em análise de criativos publicitários para Meta Ads. Analise vídeos e imagens com foco em compliance, qualidade e efetividade. Responda SEMPRE em JSON válido.'
+          content: 'Você é um especialista em análise de criativos para Meta Ads. Seja ESPECÍFICO e DETALHADO. Analise cada frame cuidadosamente. Responda SEMPRE em JSON válido.'
         },
         {
           role: 'user',
@@ -282,13 +340,16 @@ ${transcription || '[Sem áudio/transcrição]'}
             { type: 'text', text: prompt },
             ...base64Frames.map(imageUrl => ({
               type: 'image_url' as const,
-              image_url: { url: imageUrl }
+              image_url: { 
+                url: imageUrl,
+                detail: 'high' as const
+              }
             }))
           ]
         }
       ],
-      max_completion_tokens: 2000,
-      temperature: 0.3,
+      max_completion_tokens: 3000,
+      temperature: 0.4,
       response_format: { type: 'json_object' }
     });
     
@@ -298,6 +359,7 @@ ${transcription || '[Sem áudio/transcrição]'}
     console.log('✅ [VideoAnalyzer] Análise GPT-5.2 concluída');
     console.log('📊 [VideoAnalyzer] Resultado:', {
       isCompliant: analysis.isCompliant,
+      confidence: analysis.confidence,
       warnings: analysis.warnings?.length || 0,
       objective: analysis.recommended_objective
     });
@@ -308,7 +370,12 @@ ${transcription || '[Sem áudio/transcrição]'}
       suggestions: analysis.suggestions || [],
       summary: analysis.summary || 'Vídeo analisado com sucesso',
       recommended_objective: analysis.recommended_objective || 'SALES',
-      copy_angles: analysis.copy_angles || []
+      copy_angles: analysis.copy_angles || [],
+      visualElements: analysis.visualElements || [],
+      moodAtmosphere: analysis.moodAtmosphere || '',
+      hooks: analysis.hooks || [],
+      cta: analysis.cta || '',
+      confidence: analysis.confidence || 70
     };
     
   } catch (error: any) {
@@ -320,7 +387,12 @@ ${transcription || '[Sem áudio/transcrição]'}
       suggestions: ['Revise manualmente antes de publicar'],
       summary: 'Erro na análise, mas vídeo aceito',
       recommended_objective: 'SALES',
-      copy_angles: ['Foco no problema', 'Foco na solução', 'Foco no resultado']
+      copy_angles: ['Foco no problema', 'Foco na solução', 'Foco no resultado'],
+      visualElements: [],
+      moodAtmosphere: '',
+      hooks: [],
+      cta: '',
+      confidence: 50
     };
   }
 }

@@ -9,6 +9,16 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
+  // ✅ Aumentar limite de tamanho do body para upload de vídeos (100MB)
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '100mb',
+    },
+  },
+  
+  // ✅ Aumentar limite de body para requests via middleware
+  middlewareClientMaxBodySize: '100mb',
+  
   // Configuração de imagens externas (Supabase Storage, Facebook CDN)
   images: {
     remotePatterns: [

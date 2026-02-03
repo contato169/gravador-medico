@@ -144,6 +144,6 @@ export async function POST(req: NextRequest) {
 }
 
 // Route Segment Config para Next.js App Router
-// FormData é processado nativamente, não precisa de configuração especial
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 segundos para análise com GPT Vision
+export const runtime = 'nodejs'; // Usar Node.js runtime para FormData grande
